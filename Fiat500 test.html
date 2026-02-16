@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Fiat 500 Share & Drive v10</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        :root { --fiat-red: #c41230; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #FDFCF0;
+            margin: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fiat-gradient { background: linear-gradient(135deg, #c41230 0%, #a00e26 100%); }
+        .nav-blur { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .safe-top { padding-top: env(safe-area-inset-top, 20px); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .animate-fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes successPop {
+            0% { transform: translate(-50%, -20px); opacity: 0; }
+            10% { transform: translate(-50%, 20px); opacity: 1; }
+            90% { transform: translate(-50%, 20px); opacity: 1; }
+            100% { transform: translate(-50%, -20px); opacity: 0; }
+        }
+        .animate-success-pop { animation: successPop 2.5s cubic-bezier(0.17, 0.67, 0.16, 0.99) forwards; }
+        input { font-size: 16px !important; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const Counter = ({ value, decimals = 0 }) => {
+            const [displayValue, setDisplayValue] = useState(value);
+            useEffect(() => {
+                let start = null;
+                const duration = 800;
+                const initial = displayValue;
+                const frame = (now) => {
+                    if (!start) start = now;
+                    const progress = Math.min((now - start) / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 3);
+                    setDisplayValue(ease * (value - initial) + initial);
+                    if (progress < 1) requestAnimationFrame(frame);
+                };
+                requestAnimationFrame(frame);
+            }, [value]);
+            return <span>{displayValue.toLocaleString('nl-NL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>;
+        };
+
+        function App() {
+            const [trips, setTrips] = useState([]);
+            const [refuels, setRefuels] = useState([]);
+            const [reservations, setReservations] = useState([]);
+            const [startKm, setStartKm] = useState(0);
+            const [activeTab, setActiveTab] = useState('home');
+            const [isLoaded, setIsLoaded] = useState(false);
+            const [successMsg, setSuccessMsg] = useState(null);
+            const [showSyncMenu, setShowSyncMenu] = useState(false);
+
+            useEffect(() => {
+                const t = localStorage.getItem('f500_v10_trips');
+                const r = localStorage.getItem('f500_v10_refuels');
+                const s = localStorage.getItem('f500_v10_start');
+                const res = localStorage.getItem('f500_v10_reservations');
+                if (t) setTrips(JSON.parse(t));
+                if (r) setRefuels(JSON.parse(r));
+                if (s) setStartKm(Number(s));
+                if (res) setReservations(JSON.parse(res));
+                setIsLoaded(true);
+            }, []);
+
+            useEffect(() => {
+                if (isLoaded) {
+                    localStorage.setItem('f500_v10_trips', JSON.stringify(trips));
+                    localStorage.setItem('f500_v10_refuels', JSON.stringify(refuels));
+                    localStorage.setItem('f500_v10_start', startKm.toString());
+                    localStorage.setItem('f500_v10_reservations', JSON.stringify(reservations));
+                }
+            }, [trips, refuels, startKm, reservations, isLoaded]);
+
+            const currentStats = useMemo(() => {
+                const lastRefuelKm = refuels.length > 0 ? Math.max(...refuels.map(r => r.km)) : startKm;
+                const currentOdometer = Math.max(startKm, ...trips.map(t => t.endKm), ...refuels.map(r => r.km));
+                const sessionTrips = trips.filter(t => t.endKm > lastRefuelKm);
+                let basKm = 0, annabelKm = 0, gastKm = 0;
+                sessionTrips.forEach(t => {
+                    const tripStart = t.endKm - t.dist;
+                    const effectiveDist = t.endKm - Math.max(tripStart, lastRefuelKm);
+                    if (t.driver === 'Bas') basKm += effectiveDist;
+                    else if (t.driver === 'Annabel') annabelKm += effectiveDist;
+                    else gastKm += effectiveDist;
+                });
+                const totalSessionKm = basKm + annabelKm + gastKm;
+                const basPct = totalSessionKm > 0 ? Math.round((basKm / totalSessionKm) * 100) : 0;
+                const annabelPct = totalSessionKm > 0 ? Math.round((annabelKm / totalSessionKm) * 100) : 0;
+                const gastPct = totalSessionKm > 0 ? 100 - basPct - annabelPct : 0;
+                return { basKm, annabelKm, gastKm, totalSessionKm, basPct, annabelPct, gastPct, currentOdometer, lastRefuelKm };
+            }, [trips, refuels, startKm]);
+
+            const showToast = (msg) => {
+                setSuccessMsg(msg);
+                setTimeout(() => setSuccessMsg(null), 2000);
+            };
+
+            const handleExport = () => {
+                const data = JSON.stringify({ trips, refuels, reservations, startKm });
+                navigator.clipboard.writeText(data);
+                showToast('Code Gekopieerd!');
+            };
+
+            const handleImport = () => {
+                const code = prompt('Plak de synchronisatiecode:');
+                if (code) {
+                    try {
+                        const p = JSON.parse(code);
+                        setTrips(p.trips || []);
+                        setRefuels(p.refuels || []);
+                        setReservations(p.reservations || []);
+                        setStartKm(p.startKm || 0);
+                        showToast('Gegevens geladen!');
+                        setShowSyncMenu(false);
+                    } catch(e) { alert('Ongeldige code!'); }
+                }
+            };
+
+            if (!isLoaded) return null;
+
+            return (
+                <div className="max-w-4xl mx-auto min-h-screen pb-36 flex flex-col font-sans">
+                    {successMsg && (
+                        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] bg-gray-900 text-white px-8 py-3 rounded-full shadow-2xl animate-success-pop flex items-center gap-3 border border-white/10">
+                            <i className="bi bi-check-circle-fill text-green-400"></i>
+                            <span className="text-[12px] font-black uppercase tracking-widest">{successMsg}</span>
+                        </div>
+                    )}
+
+                    <header className="fiat-gradient text-white pt-16 pb-28 px-8 rounded-b-[80px] shadow-2xl relative safe-top overflow-hidden">
+                        <div className="absolute inset-0 opacity-10 pointer-events-none flex justify-center items-center text-[220px] font-black italic">500</div>
+                        <div className="flex justify-between items-center mb-12 max-w-4xl mx-auto relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white px-3 py-1 rounded-lg shadow-lg">
+                                    <span className="text-red-600 font-black italic text-xl tracking-tighter">FIAT</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">Cinquecento</h1>
+                                    <p className="text-[9px] font-bold opacity-60 uppercase tracking-[0.4em] mt-1 text-white">Samen Delen</p>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <button onClick={() => setShowSyncMenu(!showSyncMenu)} className={`p-4 rounded-full backdrop-blur-md border border-white/20 active:scale-90 transition-all shadow-lg ${showSyncMenu ? 'bg-white text-red-600' : 'bg-white/15 text-white'}`}>
+                                    <i className={`bi ${showSyncMenu ? 'bi-x-lg' : 'bi-arrow-left-right'} text-2xl`}></i>
+                                </button>
+                                {showSyncMenu && (
+                                    <div className="absolute right-0 mt-4 w-64 bg-white rounded-[30px] shadow-2xl p-4 z-[100] border border-gray-100 animate-fade-up">
+                                        <button onClick={handleExport} className="w-full text-left p-4 hover:bg-gray-50 rounded-2xl flex items-center gap-3 transition-colors">
+                                            <i className="bi bi-copy text-red-600"></i>
+                                            <span className="text-xs font-black uppercase text-gray-700">Kopieer Code</span>
+                                        </button>
+                                        <button onClick={handleImport} className="w-full text-left p-4 hover:bg-gray-50 rounded-2xl flex items-center gap-3 transition-colors">
+                                            <i className="bi bi-clipboard-check text-red-600"></i>
+                                            <span className="text-xs font-black uppercase text-gray-700">Plak Code</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-[60px] shadow-2xl relative overflow-hidden max-w-4xl mx-auto animate-fade-up border-[6px] border-gray-100/50">
+                            <div className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 mb-8 text-gray-900">
+                                <div className="text-center md:text-left flex flex-col items-center md:items-start">
+                                    <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-gray-400">Deze tankbeurt</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-5xl md:text-6xl font-black tabular-nums tracking-tighter"><Counter value={currentStats.totalSessionKm} /></p>
+                                        <span className="text-xl font-black opacity-30 italic">km</span>
+                                    </div>
+                                </div>
+                                <div className="flex-1 w-full max-w-md px-4">
+                                    <div className="h-12 w-full bg-gray-50 rounded-full flex overflow-hidden p-1.5 border-2 border-gray-100 mb-3 relative">
+                                        <div style={{ width: `${currentStats.basPct}%` }} className="bg-blue-500 h-full rounded-l-full shadow-inner"></div>
+                                        <div style={{ width: `${currentStats.annabelPct}%` }} className="bg-purple-500 h-full shadow-inner"></div>
+                                        <div style={{ width: `${currentStats.gastPct}%` }} className="bg-gray-200 h-full rounded-r-full shadow-inner"></div>
+                                    </div>
+                                    <div className="flex justify-between px-1">
+                                        <span className="text-[10px] font-black text-blue-500 uppercase">Bas: {currentStats.basPct}%</span>
+                                        <span className="text-[10px] font-black text-purple-500 uppercase">Annabel: {currentStats.annabelPct}%</span>
+                                    </div>
+                                </div>
+                                <div className="text-center md:text-right border-l-0 md:border-l pl-0 md:pl-6 border-gray-100">
+                                    <p className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-1 italic">Totaalstand</p>
+                                    <p className="text-2xl font-black text-gray-300 tabular-nums"><Counter value={currentStats.currentOdometer} /></p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3 pt-6 border-t border-gray-50">
+                                <QuickActionBtn onClick={() => setActiveTab('ritten')} icon="bi-geo-alt-fill" label="Rit Loggen" color="red" />
+                                <QuickActionBtn onClick={() => setActiveTab('agenda')} icon="bi-calendar2-week-fill" label="Agenda" color="blue" />
+                                <QuickActionBtn onClick={() => setActiveTab('tank')} icon="bi-fuel-pump-fill" label="Tanken" color="green" />
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 px-4 mt-12 space-y-10 animate-fade-up">
+                        {activeTab === 'home' && (
+                            <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
+                                <h2 className="text-xl font-black italic uppercase tracking-tight mb-8">Recente Ritten</h2>
+                                <div className="space-y-4">
+                                    {trips.length === 0 ? (
+                                        <div className="text-center py-10 opacity-20"><i className="bi bi-car-front-fill text-4xl mb-2"></i><p className="text-[10px] font-black uppercase">Geen ritten gevonden</p></div>
+                                    ) : trips.slice(0, 8).map(t => (
+                                        <div key={t.id} className="flex justify-between items-center p-5 bg-[#FAF9F6] rounded-[30px] border border-gray-100 hover:border-red-100 group transition-all">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-[20px] flex items-center justify-center shadow-inner ${t.driver === 'Bas' ? 'bg-blue-50 text-blue-600' : t.driver === 'Annabel' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className="bi bi-person-fill text-2xl"></i>
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{t.dest}</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{new Date(t.date).toLocaleDateString('nl-NL')} • {t.endKm} km</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <p className="text-2xl font-black text-red-600 tabular-nums">+{t.dist}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'ritten' && <TripTab lastKm={currentStats.currentOdometer} onAdd={(t) => {setTrips([t, ...trips]); setActiveTab('home'); showToast('Rit bewaard!');}} />}
+                        {activeTab === 'tank' && <TankTab stats={currentStats} onAdd={(r) => {setRefuels([r, ...refuels]); setActiveTab('home'); showToast('Getankt!');}} />}
+                        {activeTab === 'agenda' && <AgendaTab reservations={reservations} onAdd={(res) => {setReservations([res, ...reservations]); showToast('Gereserveerd!');}} onDelete={(id) => setReservations(reservations.filter(r => r.id !== id))} />}
+                    </main>
+
+                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg nav-blur border-2 border-white rounded-[45px] p-2 flex justify-around shadow-2xl z-50 safe-bottom">
+                        <NavBtn active={activeTab === 'home'} icon="bi-house-fill" label="Home" onClick={() => setActiveTab('home')} />
+                        <NavBtn active={activeTab === 'ritten'} icon="bi-cursor-fill" label="Ritten" onClick={() => setActiveTab('ritten')} />
+                        <NavBtn active={activeTab === 'agenda'} icon="bi-calendar3" label="Agenda" onClick={() => setActiveTab('agenda')} />
+                        <NavBtn active={activeTab === 'tank'} icon="bi-fuel-pump-fill" label="Tanken" onClick={() => setActiveTab('tank')} />
+                    </nav>
+                </div>
+            );
+        }
+
+        const QuickActionBtn = ({ onClick, icon, label, color }) => {
+            const colors = { red: 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100', blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100', green: 'bg-green-50 text-green-600 border-green-100 hover:bg-green-100' };
+            return (
+                <button onClick={onClick} className={`flex flex-col items-center gap-2 py-5 rounded-[30px] border-2 transition-all active:scale-95 ${colors[color]}`}>
+                    <i className={`bi ${icon} text-2xl`}></i>
+                    <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+                </button>
+            );
+        };
+
+        const NavBtn = ({ active, icon, label, onClick }) => (
+            <button onClick={onClick} className={`flex flex-col items-center py-4 rounded-[35px] transition-all duration-300 min-w-[75px] ${active ? 'bg-red-600 text-white shadow-xl' : 'text-gray-300'}`}>
+                <i className={`bi ${icon} text-xl`}></i>
+                {active && <span className="text-[8px] font-black uppercase mt-1.5">{label}</span>}
+            </button>
+        );
+
+        function TripTab({ lastKm, onAdd }) {
+            const [driver, setDriver] = useState('Bas');
+            const [dest, setDest] = useState('');
+            const [inputValue, setInputValue] = useState('');
+            const dist = parseInt(inputValue) || 0;
+            const isValid = dest.trim() !== '' && dist > 0;
+            return (
+                <div className="bg-white p-10 rounded-[60px] shadow-2xl space-y-8 animate-fade-up border-[6px] border-gray-50">
+                    <h2 className="text-3xl font-black italic uppercase">Nieuwe Rit</h2>
+                    <div className="flex gap-3 p-2 bg-gray-100 rounded-[35px]">
+                        {['Bas', 'Annabel', 'Gast'].map(d => (
+                            <button key={d} onClick={() => setDriver(d)} className={`flex-1 py-4 rounded-[28px] font-black text-[11px] uppercase transition-all ${driver === d ? (d === 'Bas' ? 'bg-blue-500 shadow-blue-100' : d === 'Annabel' ? 'bg-purple-500 shadow-purple-100' : 'bg-gray-800 shadow-gray-200') + ' text-white shadow-lg' : 'text-gray-400'}`}>{d}</button>
+                        ))}
+                    </div>
+                    <div className="space-y-6 text-center">
+                        <input type="text" placeholder="Bestemming?" value={dest} onChange={e => setDest(e.target.value)} className="w-full p-6 bg-gray-50 rounded-[35px] border-2 border-gray-100 font-bold text-center focus:ring-4 focus:ring-red-100 outline-none transition-all" />
+                        <div className="bg-[#FAF9F6] p-10 rounded-[50px] border-4 border-white shadow-inner">
+                            <p className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest">Aantal KM gereden</p>
+                            <input type="number" placeholder="0" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full bg-transparent text-7xl font-black text-center outline-none tabular-nums" />
+                        </div>
+                    </div>
+                    <button disabled={!isValid} onClick={() => onAdd({ id: Date.now().toString(), driver, dest, dist, endKm: lastKm + dist, date: new Date().toISOString() })} className={`w-full py-7 rounded-[40px] font-black uppercase tracking-widest shadow-2xl ${isValid ? 'fiat-gradient text-white active:scale-95' : 'bg-gray-100 text-gray-300'}`}>Sla Rit Op</button>
+                </div>
+            );
+        }
+
+        function TankTab({ stats, onAdd }) {
+            const [price, setPrice] = useState('');
+            const [km, setKm] = useState(stats.currentOdometer.toString());
+            const cost = parseFloat(price.replace(',', '.')) || 0;
+            const currentKm = parseInt(km) || 0;
+            const isValid = currentKm >= stats.currentOdometer && cost > 0;
+            return (
+                <div className="bg-white p-10 rounded-[60px] shadow-2xl space-y-10 animate-fade-up border-[6px] border-gray-50">
+                    <h2 className="text-3xl font-black italic uppercase">Tanken</h2>
+                    <div className="space-y-8">
+                        <div className="relative">
+                            <span className="absolute left-10 top-1/2 -translate-y-1/2 text-5xl font-black text-green-600/20">€</span>
+                            <input type="text" placeholder="0,00" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-12 pl-20 bg-[#FAF9F6] rounded-[45px] border-2 border-gray-100 font-black text-7xl text-green-600 text-center outline-none shadow-inner" />
+                        </div>
+                        <div className="bg-[#FAF9F6] p-10 rounded-[45px] border-2 border-gray-100 text-center shadow-inner">
+                            <p className="text-[11px] font-black text-gray-400 uppercase mb-4 tracking-widest">Nieuwe Kilometerstand</p>
+                            <input type="number" value={km} onChange={e => setKm(e.target.value)} className={`w-full bg-transparent text-5xl font-black text-center outline-none tabular-nums ${currentKm < stats.currentOdometer ? 'text-red-500' : 'text-gray-800'}`} />
+                        </div>
+                    </div>
+                    <button disabled={!isValid} onClick={() => onAdd({ id: Date.now().toString(), km: currentKm, cost, date: new Date().toISOString() })} className={`w-full py-8 rounded-[45px] font-black uppercase shadow-2xl ${!isValid ? 'bg-gray-100 text-gray-300' : 'bg-green-600 text-white active:scale-95'}`}>Tankbeurt Opslaan</button>
+                </div>
+            );
+        }
+
+        function AgendaTab({ reservations, onAdd, onDelete }) {
+            const [note, setNote] = useState('');
+            const [driver, setDriver] = useState('Bas');
+            const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+            const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+            const [startTime, setStartTime] = useState('09:00');
+            const [endTime, setEndTime] = useState('17:00');
+            const [isAllDay, setIsAllDay] = useState(true);
+            const [isMultiDay, setIsMultiDay] = useState(false);
+            const isFormValid = note.trim().length > 0;
+
+            const handleAdd = () => {
+                if(!isFormValid) return;
+                onAdd({ 
+                    id: Date.now().toString(), 
+                    driver, 
+                    note: note.trim(), 
+                    startDate, 
+                    endDate: isMultiDay ? endDate : startDate, 
+                    startTime: isAllDay ? '' : startTime,
+                    endTime: isAllDay ? '' : endTime,
+                    isAllDay 
+                });
+                setNote('');
+            };
+
+            const formatDate = (dateStr) => {
+                return new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+            };
+
+            return (
+                <div className="space-y-10">
+                    <div className="bg-white p-10 rounded-[60px] shadow-2xl border-[6px] border-gray-50 space-y-8 animate-fade-up">
+                        <h2 className="text-3xl font-black italic uppercase tracking-tighter">Auto Reserveren</h2>
+                        
+                        <div className="flex gap-3 p-2 bg-gray-50 rounded-[35px]">
+                            {['Bas', 'Annabel', 'Gast'].map(d => (
+                                <button key={d} onClick={() => setDriver(d)} className={`flex-1 py-4 rounded-[28px] font-black text-[11px] uppercase transition-all ${driver === d ? (d === 'Bas' ? 'bg-blue-500 shadow-blue-100' : d === 'Annabel' ? 'bg-purple-500 shadow-purple-100' : 'bg-gray-800 shadow-gray-200') + ' text-white shadow-lg' : 'text-gray-400'}`}>{d}</button>
+                            ))}
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 italic">Omschrijving (Verplicht)</label>
+                                <input type="text" placeholder="Wat ga je doen?" value={note} onChange={e => setNote(e.target.value)} className={`w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 font-bold text-center transition-all outline-none focus:ring-4 focus:ring-red-100 ${!isFormValid ? 'border-red-100' : 'border-gray-50'}`} />
+                            </div>
+
+                            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 rounded-[35px] border-2 border-gray-100 transition-all">
+                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-widest italic">Meerdere dagen?</span>
+                                <button onClick={() => { setIsMultiDay(!isMultiDay); if(!isMultiDay) setEndDate(startDate); }} className={`w-16 h-8 rounded-full p-1 transition-all duration-300 ${isMultiDay ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                                    <div className={`bg-white w-6 h-6 rounded-full shadow-md transition-all duration-300 ${isMultiDay ? 'translate-x-8' : ''}`}></div>
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-gray-300 uppercase ml-4">{isMultiDay ? 'Start' : 'Datum'}</label>
+                                    <input type="date" value={startDate} onChange={e => {setStartDate(e.target.value); if(!isMultiDay) setEndDate(e.target.value);}} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center outline-none" />
+                                </div>
+                                {isMultiDay && (
+                                    <div className="space-y-1 animate-fade-up">
+                                        <label className="text-[9px] font-black text-gray-300 uppercase ml-4">Einde</label>
+                                        <input type="date" min={startDate} value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center outline-none" />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 rounded-[35px] border-2 border-gray-100 transition-all">
+                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-widest italic">Hele Dag?</span>
+                                <button onClick={() => setIsAllDay(!isAllDay)} className={`w-16 h-8 rounded-full p-1 transition-all duration-300 ${isAllDay ? 'bg-red-600' : 'bg-gray-200'}`}>
+                                    <div className={`bg-white w-6 h-6 rounded-full shadow-md transition-all duration-300 ${isAllDay ? 'translate-x-8' : ''}`}></div>
+                                </button>
+                            </div>
+
+                            {!isAllDay && (
+                                <div className="grid grid-cols-2 gap-4 animate-fade-up">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-gray-300 uppercase ml-4">Vanaf</label>
+                                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-gray-300 uppercase ml-4">Tot</label>
+                                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <button disabled={!isFormValid} onClick={handleAdd} className={`w-full py-8 rounded-[45px] font-black uppercase text-lg shadow-2xl transition-all ${isFormValid ? 'fiat-gradient text-white active:scale-95' : 'bg-gray-100 text-gray-300'}`}>Rit Reserveren</button>
+                    </div>
+
+                    <div className="bg-white p-10 rounded-[60px] shadow-sm border border-gray-200/50">
+                        <h3 className="text-xs font-black text-gray-300 uppercase tracking-[0.3em] mb-10 text-center italic">Planning</h3>
+                        <div className="space-y-4">
+                            {reservations.length === 0 ? (
+                                <p className="text-center py-20 text-gray-300 italic font-bold uppercase text-[11px] tracking-widest opacity-40">De weg ligt nog open...</p>
+                            ) : reservations.sort((a,b) => new Date(a.startDate) - new Date(b.startDate)).map(res => {
+                                const isSingleDay = res.startDate === res.endDate;
+                                const borderColors = { 'Bas': 'bg-blue-500', 'Annabel': 'bg-purple-500', 'Gast': 'bg-gray-800' };
+                                const textColors = { 'Bas': 'text-blue-500', 'Annabel': 'text-purple-500', 'Gast': 'text-gray-800' };
+                                return (
+                                    <div key={res.id} className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all">
+                                        <div className={`absolute left-0 top-0 bottom-0 w-2 ${borderColors[res.driver] || 'bg-gray-400'}`}></div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
+                                                <span className="text-[9px] font-black text-red-600 uppercase leading-none">{formatDate(res.startDate).split(' ')[0]}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-lg font-black text-gray-800 leading-tight">{formatDate(res.startDate).split(' ')[1]}</span>
+                                                    {!isSingleDay && <i className="bi bi-arrow-right text-[10px] opacity-30"></i>}
+                                                    {!isSingleDay && <span className="text-lg font-black text-gray-800 leading-tight">{formatDate(res.endDate).split(' ')[1]}</span>}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{res.note}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`text-[9px] font-black uppercase ${textColors[res.driver] || 'text-gray-400'}`}>{res.driver}</span>
+                                                    <span className="text-gray-300 text-[10px]">•</span>
+                                                    <span className="text-[9px] font-black text-gray-400 uppercase italic">
+                                                        {res.isAllDay ? 'Hele dag' : `${res.startTime} - ${res.endTime}`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => onDelete(res.id)} className="text-gray-200 hover:text-red-500 p-3 transition-colors active:scale-90"><i className="bi bi-trash3-fill text-xl"></i></button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
