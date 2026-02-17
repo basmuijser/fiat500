@@ -61,6 +61,12 @@ async function sbFetchTrips() {
     .select("id, driver, destination, end_km, distance")
     .order("id", { ascending: false });
 
+  const { data, error } = await sb
+    .from("trips")
+    .insert(payload)
+    .select("id, driver, destination, start_km, end_km, distance, created_at")
+    .single();
+
   if (error) throw error;
 
   return (data ?? []).map(row => ({
@@ -353,7 +359,30 @@ const { useState, useEffect, useMemo } = React;
                                 </div>
                             </div>
                         )}
-                        {activeTab === 'ritten' && <TripTab lastKm={currentStats.currentOdometer} onAdd={(t) => {setTrips([t, ...trips]); setActiveTab('home'); showToast('Rit bewaard!');}} />}
+                        {activeTab === 'ritten' && 
+  <TripTab 
+    lastKm={currentStats.currentOdometer} 
+    onAdd={async (t) => {
+      try {
+        setTripsError("");
+        setTripsLoading(true);
+
+        const saved = await sbInsertTrip(t);
+
+        setTrips(prev => [saved, ...prev]);
+
+        setActiveTab('home');
+        showToast('Rit bewaard!');
+      } catch (e) {
+        setTripsError(e?.message || String(e));
+        alert("Opslaan mislukt: " + (e?.message || String(e)));
+      } finally {
+        setTripsLoading(false);
+      }
+    }} 
+  />
+}
+
                         {activeTab === 'tank' && <TankTab stats={currentStats} onAdd={(r) => {setRefuels([r, ...refuels]); setActiveTab('home'); showToast('Getankt!');}} />}
                         {activeTab === 'agenda' && <AgendaTab reservations={reservations} onAdd={(res) => {setReservations([res, ...reservations]); showToast('Gereserveerd!');}} onDelete={(id) => setReservations(reservations.filter(r => r.id !== id))} />}
                     </main>
