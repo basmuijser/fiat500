@@ -57,6 +57,13 @@
 const sb = window.sb;
 
 async function sbFetchTrips() {
+  const payload = {
+    driver: appTrip.driver,
+    destination: appTrip.dest,
+    distance: Number(appTrip.dist ?? 0),
+    end_km: Number(appTrip.endKm ?? 0),
+  };
+    
   const { data, error } = await sb
     .from("trips")
     .select("id, driver, destination, end_km, distance")
