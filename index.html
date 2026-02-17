@@ -1,7 +1,6 @@
 
 <!DOCTYPE html>
 <html lang="nl">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -14,15 +13,6 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script>
-  window.sb = supabase.createClient(
-    "https://diweipodvyevxspqefir.supabase.co",
-    "sb_publishable_Slqx3g7Fw7thAblPykfqSA_Q7TbOqg5"
-  );
-</script>
-
 
     <style>
         :root { --fiat-red: #c41230; }
@@ -52,57 +42,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // ===== Supabase (Trips) helpers =====
-const sb = window.sb;
-
-function mapDbTripToUi(row) {
-  return {
-    id: row.id,
-    driver: row.driver,
-    dest: row.destination,
-    startKm: row.start_km,
-    endKm: row.end_km,
-    dist: row.distance,
-    date: row.created_at,
-  };
-}
-
-async function sbFetchTrips() {
-  if (!sb) throw new Error("window.sb ontbreekt");
-
-  const { data, error } = await sb
-    .from("trips")
-    .select("id, driver, destination, start_km, end_km, distance, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []).map(mapDbTripToUi);
-}
-
-async function sbInsertTrip(trip) {
-  if (!sb) throw new Error("window.sb ontbreekt");
-
-  const payload = {
-    driver: String(trip.driver || "").trim(),
-    destination: String(trip.dest || "").trim(),
-    start_km: Number(trip.startKm),
-    end_km: Number(trip.endKm),
-    distance: Number(trip.dist),
-  };
-
-  const { data, error } = await sb
-    .from("trips")
-    .insert(payload)
-    .select("id, driver, destination, start_km, end_km, distance, created_at");
-
-  if (error) throw error;
-  return data?.[0] ? mapDbTripToUi(data[0]) : null;
-}
-
-const supa = window.sb;
-
-const { useState, useEffect, useMemo } = React;
-      
+        const { useState, useEffect, useMemo } = React;
 
         const Counter = ({ value, decimals = 0 }) => {
             const [displayValue, setDisplayValue] = useState(value);
@@ -180,11 +120,11 @@ const { useState, useEffect, useMemo } = React;
             const handleExport = () => {
                 const data = JSON.stringify({ trips, refuels, reservations, startKm });
                 navigator.clipboard.writeText(data);
-                showToast('Code Gekopieerd!');
+                showToast('Data Gekopieerd!');
             };
 
             const handleImport = () => {
-                const code = prompt('Plak de synchronisatiecode:');
+                const code = prompt('Plak de synchronisatiedata:');
                 if (code) {
                     try {
                         const p = JSON.parse(code);
@@ -194,8 +134,12 @@ const { useState, useEffect, useMemo } = React;
                         setStartKm(p.startKm || 0);
                         showToast('Gegevens geladen!');
                         setShowSyncMenu(false);
-                    } catch(e) { alert('Ongeldige code!'); }
+                    } catch(e) { alert('Ongeldige data!'); }
                 }
+            };
+
+            const formatDate = (dateStr) => {
+                return new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
             };
 
             if (!isLoaded) return null;
@@ -212,7 +156,10 @@ const { useState, useEffect, useMemo } = React;
                     <header className="fiat-gradient text-white pt-16 pb-28 px-8 rounded-b-[80px] shadow-2xl relative safe-top overflow-hidden">
                         <div className="absolute inset-0 opacity-10 pointer-events-none flex justify-center items-center text-[220px] font-black italic">500</div>
                         <div className="flex justify-between items-center mb-12 max-w-4xl mx-auto relative z-10">
-                            <div className="flex items-center gap-3">
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer active:scale-95 transition-transform" 
+                                onClick={() => setActiveTab('home')}
+                            >
                                 <div className="bg-white px-3 py-1 rounded-lg shadow-lg">
                                     <span className="text-red-600 font-black italic text-xl tracking-tighter">FIAT</span>
                                 </div>
@@ -229,11 +176,11 @@ const { useState, useEffect, useMemo } = React;
                                     <div className="absolute right-0 mt-4 w-64 bg-white rounded-[30px] shadow-2xl p-4 z-[100] border border-gray-100 animate-fade-up">
                                         <button onClick={handleExport} className="w-full text-left p-4 hover:bg-gray-50 rounded-2xl flex items-center gap-3 transition-colors">
                                             <i className="bi bi-copy text-red-600"></i>
-                                            <span className="text-xs font-black uppercase text-gray-700">Kopieer Code</span>
+                                            <span className="text-xs font-black uppercase text-gray-700">Kopieer Data</span>
                                         </button>
                                         <button onClick={handleImport} className="w-full text-left p-4 hover:bg-gray-50 rounded-2xl flex items-center gap-3 transition-colors">
                                             <i className="bi bi-clipboard-check text-red-600"></i>
-                                            <span className="text-xs font-black uppercase text-gray-700">Plak Code</span>
+                                            <span className="text-xs font-black uppercase text-gray-700">Plak Data</span>
                                         </button>
                                     </div>
                                 )}
@@ -251,9 +198,9 @@ const { useState, useEffect, useMemo } = React;
                                 </div>
                                 <div className="flex-1 w-full max-w-md px-4">
                                     <div className="h-12 w-full bg-gray-50 rounded-full flex overflow-hidden p-1.5 border-2 border-gray-100 mb-3 relative">
-                                        <div style={{ width: `${currentStats.basPct}%` }} className="bg-blue-500 h-full rounded-l-full shadow-inner"></div>
-                                        <div style={{ width: `${currentStats.annabelPct}%` }} className="bg-purple-500 h-full shadow-inner"></div>
-                                        <div style={{ width: `${currentStats.gastPct}%` }} className="bg-gray-200 h-full rounded-r-full shadow-inner"></div>
+                                        <div style={{ width: `${currentStats.basPct}%` }} className="bg-blue-500 h-full rounded-l-full shadow-inner transition-all duration-1000"></div>
+                                        <div style={{ width: `${currentStats.annabelPct}%` }} className="bg-purple-500 h-full shadow-inner transition-all duration-1000"></div>
+                                        <div style={{ width: `${currentStats.gastPct}%` }} className="bg-gray-200 h-full rounded-r-full transition-all duration-1000"></div>
                                     </div>
                                     <div className="flex justify-between px-1">
                                         <span className="text-[10px] font-black text-blue-500 uppercase">Bas: {currentStats.basPct}%</span>
@@ -275,27 +222,74 @@ const { useState, useEffect, useMemo } = React;
 
                     <main className="flex-1 px-4 mt-12 space-y-10 animate-fade-up">
                         {activeTab === 'home' && (
-                            <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
-                                <h2 className="text-xl font-black italic uppercase tracking-tight mb-8">Recente Ritten</h2>
-                                <div className="space-y-4">
-                                    {trips.length === 0 ? (
-                                        <div className="text-center py-10 opacity-20"><i className="bi bi-car-front-fill text-4xl mb-2"></i><p className="text-[10px] font-black uppercase">Geen ritten gevonden</p></div>
-                                    ) : trips.slice(0, 8).map(t => (
-                                        <div key={t.id} className="flex justify-between items-center p-5 bg-[#FAF9F6] rounded-[30px] border border-gray-100 hover:border-red-100 group transition-all">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-[20px] flex items-center justify-center shadow-inner ${t.driver === 'Bas' ? 'bg-blue-50 text-blue-600' : t.driver === 'Annabel' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <i className="bi bi-person-fill text-2xl"></i>
+                            <div className="space-y-10 pb-10">
+                                {/* Shortlist Agenda */}
+                                <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
+                                  <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-black italic uppercase tracking-tight">Planning</h2>
+                                  </div>
+                                  <div className="space-y-3">
+                                    {reservations.length === 0 ? (
+                                      <p className="text-center py-6 text-gray-300 italic font-bold uppercase text-[10px]">Geen plannen</p>
+                                    ) : (
+                                      reservations
+                                        .filter(r => new Date(r.startDate) >= new Date(new Date().setHours(0,0,0,0)))
+                                        .sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                                        .slice(0, 3)
+                                        .map(res => (
+                                          <div key={res.id} className="flex justify-between items-center p-4 bg-[#FAF9F6] rounded-[25px] border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                              <div className={`w-2 h-8 rounded-full ${res.driver === 'Bas' ? 'bg-blue-500' : res.driver === 'Annabel' ? 'bg-purple-500' : 'bg-gray-800'}`}></div>
+                                              <div>
+                                                <p className="font-black text-gray-800 text-xs">{res.note}</p>
+                                                <p className="text-[9px] text-gray-400 font-bold uppercase">{new Date(res.startDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} • {res.driver}</p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Laatste Tank Split */}
+                                {refuels.length > 0 && (
+                                  <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
+                                    <h2 className="text-xl font-black italic uppercase tracking-tight mb-6">Laatste Tank Split</h2>
+                                    <div className="grid grid-cols-2 gap-4">
+                                       <div className="bg-blue-50/50 p-6 rounded-[35px] border border-blue-100 text-center">
+                                          <p className="text-[9px] font-black text-blue-500 uppercase mb-2">Bas</p>
+                                          <p className="text-2xl font-black text-blue-700">€{refuels[0].basShare?.toFixed(2) || '0.00'}</p>
+                                       </div>
+                                       <div className="bg-purple-50/50 p-6 rounded-[35px] border border-purple-100 text-center">
+                                          <p className="text-[9px] font-black text-purple-500 uppercase mb-2">Annabel</p>
+                                          <p className="text-2xl font-black text-purple-700">€{refuels[0].annabelShare?.toFixed(2) || '0.00'}</p>
+                                       </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
+                                    <h2 className="text-xl font-black italic uppercase tracking-tight mb-8">Recente Ritten</h2>
+                                    <div className="space-y-4">
+                                        {trips.length === 0 ? (
+                                            <div className="text-center py-10 opacity-20"><i className="bi bi-car-front-fill text-4xl mb-2"></i><p className="text-[10px] font-black uppercase">Geen ritten gevonden</p></div>
+                                        ) : trips.slice(0, 5).map(t => (
+                                            <div key={t.id} className="flex justify-between items-center p-5 bg-[#FAF9F6] rounded-[30px] border border-gray-100 hover:border-red-100 group transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-[20px] flex items-center justify-center shadow-inner ${t.driver === 'Bas' ? 'bg-blue-50 text-blue-600' : t.driver === 'Annabel' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                        <i className="bi bi-person-fill text-2xl"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{t.dest}</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{new Date(t.date).toLocaleDateString('nl-NL')} • {t.endKm} km</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{t.dest}</p>
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{new Date(t.date).toLocaleDateString('nl-NL')} • {t.endKm} km</p>
+                                                <div className="flex items-center gap-4">
+                                                    <p className="text-2xl font-black text-red-600 tabular-nums">+{t.dist}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <p className="text-2xl font-black text-red-600 tabular-nums">+{t.dist}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -362,6 +356,8 @@ const { useState, useEffect, useMemo } = React;
             const [km, setKm] = useState(stats.currentOdometer.toString());
             const cost = parseFloat(price.replace(',', '.')) || 0;
             const currentKm = parseInt(km) || 0;
+            const basShare = (cost * stats.basPct) / 100;
+            const annabelShare = (cost * stats.annabelPct) / 100;
             const isValid = currentKm >= stats.currentOdometer && cost > 0;
             return (
                 <div className="bg-white p-10 rounded-[60px] shadow-2xl space-y-10 animate-fade-up border-[6px] border-gray-50">
@@ -376,7 +372,21 @@ const { useState, useEffect, useMemo } = React;
                             <input type="number" value={km} onChange={e => setKm(e.target.value)} className={`w-full bg-transparent text-5xl font-black text-center outline-none tabular-nums ${currentKm < stats.currentOdometer ? 'text-red-500' : 'text-gray-800'}`} />
                         </div>
                     </div>
-                    <button disabled={!isValid} onClick={() => onAdd({ id: Date.now().toString(), km: currentKm, cost, date: new Date().toISOString() })} className={`w-full py-8 rounded-[45px] font-black uppercase shadow-2xl ${!isValid ? 'bg-gray-100 text-gray-300' : 'bg-green-600 text-white active:scale-95'}`}>Tankbeurt Opslaan</button>
+
+                    {cost > 0 && (
+                        <div className="grid grid-cols-2 gap-4 animate-fade-up">
+                           <div className="bg-blue-50/50 p-6 rounded-[35px] border border-blue-100 text-center">
+                              <p className="text-[9px] font-black text-blue-500 uppercase mb-2">Bas ({stats.basPct}%)</p>
+                              <p className="text-xl font-black text-blue-700">€{basShare.toFixed(2)}</p>
+                           </div>
+                           <div className="bg-purple-50/50 p-6 rounded-[35px] border border-purple-100 text-center">
+                              <p className="text-[9px] font-black text-purple-500 uppercase mb-2">Annabel ({stats.annabelPct}%)</p>
+                              <p className="text-xl font-black text-purple-700">€{annabelShare.toFixed(2)}</p>
+                           </div>
+                        </div>
+                    )}
+
+                    <button disabled={!isValid} onClick={() => onAdd({ id: Date.now().toString(), km: currentKm, cost, basShare, annabelShare, date: new Date().toISOString() })} className={`w-full py-8 rounded-[45px] font-black uppercase shadow-2xl ${!isValid ? 'bg-gray-100 text-gray-300' : 'bg-green-600 text-white active:scale-95'}`}>Tankbeurt Opslaan</button>
                 </div>
             );
         }
@@ -463,7 +473,7 @@ const { useState, useEffect, useMemo } = React;
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-gray-300 uppercase ml-4">Tot</label>
-                                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center" />
+                                        <input type="time" value={endTime} onChange={e => setendTime(e.target.value)} className="w-full p-6 bg-[#FAF9F6] rounded-[35px] border-2 border-gray-100 font-bold text-center" />
                                     </div>
                                 </div>
                             )}
