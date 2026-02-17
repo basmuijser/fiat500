@@ -485,14 +485,19 @@ const { useState, useEffect, useMemo } = React;
         }
 
         function TankTab({ stats, onAdd }) {
-            const [price, setPrice] = useState('');
-            const [km, setKm] = useState(stats.currentOdometer.toString());
-            const cost = parseFloat(price.replace(',', '.')) || 0;
-            const currentKm = parseInt(km) || 0;
-            const basShare = (cost * stats.basPct) / 100;
-            const annabelShare = (cost * stats.annabelPct) / 100;
-            const isValid = currentKm >= stats.currentOdometer && cost > 0;
-            return (
+  const [price, setPrice] = useState("");
+  const [km, setKm] = useState(String(stats.currentOdometer));
+
+  const cost = parseFloat(String(price).replace(",", ".")) || 0;
+  const currentKm = parseInt(km, 10) || 0;
+
+  const basShare = (cost * stats.basPct) / 100;
+  const annabelShare = (cost * stats.annabelPct) / 100;
+
+  const isValid = currentKm >= stats.currentOdometer && cost > 0;
+
+  return (
+    
                 <div className="bg-white p-10 rounded-[60px] shadow-2xl space-y-10 animate-fade-up border-[6px] border-gray-50">
                     <h2 className="text-3xl font-black italic uppercase">Tanken</h2>
                     <div className="space-y-8">
