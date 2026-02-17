@@ -59,7 +59,7 @@ const sb = window.sb;
 async function sbFetchTrips() {
   const { data, error } = await sb
     .from("trips")
-    .select("id, driver, destination, end_km, distance, created_at")
+    .select("id, driver, destination, end_km, distance")
     .order("id", { ascending: false });
 
   if (error) throw error;
@@ -70,12 +70,9 @@ async function sbFetchTrips() {
     dest: row.destination,
     dist: Number(row.distance ?? 0),
     endKm: Number(row.end_km ?? 0),
-    date: row.created_at
-      ? new Date(row.created_at).toISOString()
-      : new Date().toISOString(),
+    date: new Date().toISOString(), // tijdelijk (totdat je een datumkolom hebt)
   }));
 }
-
 
 const { useState, useEffect, useMemo } = React;
 
