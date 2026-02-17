@@ -380,33 +380,36 @@ const { useState, useEffect, useMemo } = React;
                                 </div>
                             </div>
                         )}
-                        {activeTab === 'ritten' && 
-  <TripTab 
-    lastKm={currentStats.currentOdometer} 
+                      
+                     {activeTab === 'ritten' && (
+  <TripTab
+    lastKm={currentStats.currentOdometer}
     onAdd={async (t) => {
       try {
         setTripsError("");
         setTripsLoading(true);
 
         const saved = await sbInsertTrip(t);
+        setTrips((prev) => [saved, ...prev]);
 
-        setTrips(prev => [saved, ...prev]);
-
-        setActiveTab('home');
-        showToast('Rit bewaard!');
+        setActiveTab("home");
+        showToast("Rit bewaard!");
       } catch (e) {
-        setTripsError(e?.message || String(e));
+  setTripsError(e?.message || String(e));
 
-    const localTrip = { ...t, _source: "local" };
-    setTrips(prev => [localTrip, ...prev]);
+  const localTrip = { ...t, _source: "local" };
+  setTrips((prev) => [localTrip, ...prev]);
 
-    showToast("Supabase mislukt — lokaal opgeslagen");
-      } finally {
+  showToast("Supabase mislukt — lokaal opgeslagen");
+}
+
+        finally {
         setTripsLoading(false);
       }
-    }} 
+    }}
   />
-}
+)}
+
 
                         {activeTab === 'tank' && <TankTab stats={currentStats} onAdd={(r) => {setRefuels([r, ...refuels]); setActiveTab('home'); showToast('Getankt!');}} />}
                         {activeTab === 'agenda' && <AgendaTab reservations={reservations} onAdd={(res) => {setReservations([res, ...reservations]); showToast('Gereserveerd!');}} onDelete={(id) => setReservations(reservations.filter(r => r.id !== id))} />}
