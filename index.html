@@ -53,31 +53,29 @@
     <script type="text/babel">
 
 // ===== Supabase Trips (read) =====
+// ===== Supabase Trips (read) =====
 const sb = window.sb;
 
 async function sbFetchTrips() {
   const { data, error } = await sb
     .from("trips")
-    .select("id, driver, destination, end_km, distance")
+    .select("id, driver, destination, end_km, distance, created_at")
     .order("id", { ascending: false });
-
-  const { data, error } = await sb
-    .from("trips")
-    .insert(payload)
-    .select("id, driver, destination, start_km, end_km, distance, created_at")
-    .single();
 
   if (error) throw error;
 
   return (data ?? []).map(row => ({
-    id: row.id,
+    id: String(row.id),
     driver: row.driver,
     dest: row.destination,
-    dist: row.distance,
-    endKm: row.end_km,
-    date: new Date().toISOString(), // tijdelijk
+    dist: Number(row.distance ?? 0),
+    endKm: Number(row.end_km ?? 0),
+    date: row.created_at
+      ? new Date(row.created_at).toISOString()
+      : new Date().toISOString(),
   }));
 }
+
 
 const { useState, useEffect, useMemo } = React;
 
