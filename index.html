@@ -51,6 +51,30 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // ===== Supabase Trips (read) =====
+const sb = window.sb;
+
+function mapDbTripToUi(row) {
+  return {
+    id: row.id,
+    driver: row.driver,
+    dest: row.destination,
+    dist: row.distance,
+    endKm: row.end_km,
+    date: row.created_at,
+  };
+}
+
+async function sbFetchTrips() {
+  const { data, error } = await sb
+    .from("trips")
+    .select("id, driver, destination, end_km, distance, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map(mapDbTripToUi);
+}
+
         const { useState, useEffect, useMemo } = React;
 
         const Counter = ({ value, decimals = 0 }) => {
