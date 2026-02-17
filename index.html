@@ -396,7 +396,11 @@ const { useState, useEffect, useMemo } = React;
         showToast('Rit bewaard!');
       } catch (e) {
         setTripsError(e?.message || String(e));
-        alert("Opslaan mislukt: " + (e?.message || String(e)));
+
+    const localTrip = { ...t, _source: "local" };
+    setTrips(prev => [localTrip, ...prev]);
+
+    showToast("Supabase mislukt — lokaal opgeslagen");
       } finally {
         setTripsLoading(false);
       }
@@ -456,8 +460,24 @@ const { useState, useEffect, useMemo } = React;
                             <input type="number" placeholder="0" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full bg-transparent text-7xl font-black text-center outline-none tabular-nums" />
                         </div>
                     </div>
-                    <button disabled={!isValid} onClick={() => onAdd({ id: Date.now().toString(), driver, dest, dist, endKm: lastKm + dist, date: new Date().toISOString() })} className={`w-full py-7 rounded-[40px] font-black uppercase tracking-widest shadow-2xl ${isValid ? 'fiat-gradient text-white active:scale-95' : 'bg-gray-100 text-gray-300'}`}>Sla Rit Op</button>
-                </div>
+                   <button
+  disabled={!isValid}
+  onClick={() =>
+    onAdd({
+      id: Date.now().toString(),
+      driver,
+      dest,
+      dist,
+      startKm: lastKm,
+      endKm: lastKm + dist,
+      date: new Date().toISOString(),
+    })
+  }
+  className={`w-full py-7 rounded-[40px] font-black uppercase tracking-widest shadow-2xl ${isValid ? 'fiat-gradient text-white active:scale-95' : 'bg-gray-100 text-gray-300'}`}
+>
+  Sla Rit Op
+</button>
+
             );
         }
 
