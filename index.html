@@ -101,6 +101,10 @@ const { useState, useEffect, useMemo } = React;
             const [startKm, setStartKm] = useState(0);
             const [activeTab, setActiveTab] = useState('home');
             const [isLoaded, setIsLoaded] = useState(false);
+
+            const [tripsLoading, setTripsLoading] = useState(false);
+            const [tripsError, setTripsError] = useState("");
+
             const [successMsg, setSuccessMsg] = useState(null);
             const [showSyncMenu, setShowSyncMenu] = useState(false);
 
@@ -115,6 +119,30 @@ const { useState, useEffect, useMemo } = React;
                 if (res) setReservations(JSON.parse(res));
                 setIsLoaded(true);
             }, []);
+
+            useEffect(() => {
+  if (!isLoaded) return;
+
+  let alive = true;
+
+  (async () => {
+    try {
+      setTripsError("");
+      setTripsLoading(true);
+
+      const rows = await sbFetchTrips();
+      if (alive) setTrips(rows);
+
+    } catch (e) {
+      if (alive) setTripsError(e?.message || String(e));
+    } finally {
+      if (alive) setTripsLoading(false);
+    }
+  })();
+
+  return () => { alive = false; };
+}, [isLoaded]);
+
 
             useEffect(() => {
                 if (isLoaded) {
