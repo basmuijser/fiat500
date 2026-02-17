@@ -52,7 +52,54 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        // ===== Supabase (Trips) helpers =====
+const sb = window.sb;
+
+function mapDbTripToUi(row) {
+  return {
+    id: row.id,
+    driver: row.driver,
+    dest: row.destination,
+    startKm: row.start_km,
+    endKm: row.end_km,
+    dist: row.distance,
+    date: row.created_at,
+  };
+}
+
+async function sbFetchTrips() {
+  if (!sb) throw new Error("window.sb ontbreekt");
+
+  const { data, error } = await sb
+    .from("trips")
+    .select("id, driver, destination, start_km, end_km, distance, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map(mapDbTripToUi);
+}
+
+async function sbInsertTrip(trip) {
+  if (!sb) throw new Error("window.sb ontbreekt");
+
+  const payload = {
+    driver: String(trip.driver || "").trim(),
+    destination: String(trip.dest || "").trim(),
+    start_km: Number(trip.startKm),
+    end_km: Number(trip.endKm),
+    distance: Number(trip.dist),
+  };
+
+  const { data, error } = await sb
+    .from("trips")
+    .insert(payload)
+    .select("id, driver, destination, start_km, end_km, distance, created_at");
+
+  if (error) throw error;
+  return data?.[0] ? mapDbTripToUi(data[0]) : null;
+}
+
+        
 
         const Counter = ({ value, decimals = 0 }) => {
             const [displayValue, setDisplayValue] = useState(value);
