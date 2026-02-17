@@ -99,7 +99,10 @@ async function sbInsertTrip(trip) {
   return data?.[0] ? mapDbTripToUi(data[0]) : null;
 }
 
-        
+const sb = window.sb;
+
+const { useState, useEffect, useMemo } = React;
+      
 
         const Counter = ({ value, decimals = 0 }) => {
             const [displayValue, setDisplayValue] = useState(value);
