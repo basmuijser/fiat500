@@ -52,18 +52,10 @@
 
     <script type="text/babel">
 
-// ===== Supabase Trips (read) =====
-// ===== Supabase Trips (read) =====
+// ===== Supabase Trips (read/write) =====
 const sb = window.sb;
 
 async function sbFetchTrips() {
-  const payload = {
-    driver: appTrip.driver,
-    destination: appTrip.dest,
-    distance: Number(appTrip.dist ?? 0),
-    end_km: Number(appTrip.endKm ?? 0),
-  };
-    
   const { data, error } = await sb
     .from("trips")
     .select("id, driver, destination, end_km, distance")
@@ -77,9 +69,36 @@ async function sbFetchTrips() {
     dest: row.destination,
     dist: Number(row.distance ?? 0),
     endKm: Number(row.end_km ?? 0),
-    date: new Date().toISOString(), // tijdelijk (totdat je een datumkolom hebt)
+    date: new Date().toISOString(),
   }));
 }
+
+async function sbInsertTrip(appTrip) {
+  const payload = {
+    driver: appTrip.driver,
+    destination: appTrip.dest,
+    distance: Number(appTrip.dist ?? 0),
+    end_km: Number(appTrip.endKm ?? 0),
+  };
+
+  const { data, error } = await sb
+    .from("trips")
+    .insert([payload])
+    .select("id, driver, destination, end_km, distance")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: String(data.id),
+    driver: data.driver,
+    dest: data.destination,
+    dist: Number(data.distance ?? 0),
+    endKm: Number(data.end_km ?? 0),
+    date: new Date().toISOString(),
+  };
+}
+
 
 const { useState, useEffect, useMemo } = React;
 
