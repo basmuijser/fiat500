@@ -711,22 +711,11 @@ useEffect(() => {
     key={p.id}
     className="flex justify-between items-center p-4 bg-[#FAF9F6] rounded-[25px] border border-gray-100"
   >
-    <div className="flex items-center gap-3">
-      <div
-        className={`w-2 h-8 rounded-full ${
-          p.owner?.toLowerCase() === "annabel" ? "bg-purple-500" : "bg-blue-500"
-        }`}
-      />
-      <div>
-        <p className="font-black text-gray-800 text-xs">{p.title}</p>
-        <p className="text-[9px] text-gray-400 font-bold uppercase">
-          {new Date(p.date).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-          {p.owner ? ` • ${p.owner}` : ""}
-        </p>
-      </div>
-    </div>
+    ...
   </div>
 ))
+  )}
+</div>
 
 
 
