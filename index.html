@@ -748,6 +748,27 @@ useEffect(() => {
   key={p.id}
   className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
 >
+  <div className="flex items-center gap-4">
+    ... jouw bestaande datumblok + tekst ...
+  </div>
+
+  <button
+    onClick={async () => {
+      // Supabase delete
+      await sbDeletePlanning(p.id);
+
+      // Direct uit Home lijst halen
+      setPlanning((prev) => (prev ?? []).filter((x) => x.id !== p.id));
+
+      showToast("Reservering verwijderd");
+    }}
+    className="w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
+    title="Verwijder reservering"
+  >
+    <i className="bi bi-trash3-fill text-xl"></i>
+  </button>
+</div>
+
   <div
     className={`absolute left-0 top-0 bottom-0 w-2 ${
       p.owner === "Bas"
