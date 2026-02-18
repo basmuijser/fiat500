@@ -708,9 +708,7 @@ useEffect(() => {
       showToast("Gereserveerd!");
     }}
     onDelete={(id) =>
-      setReservations((prev) =>
-        prev.filter((r) => r.id !== id)
-      )
+      setReservations((prev) => prev.filter((r) => r.id !== id))
     }
   />
 )}
