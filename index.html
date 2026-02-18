@@ -100,14 +100,16 @@ async function sbInsertTrip(appTrip) {
 }
 
     async function sbDeleteTrip(id) {
-  const { error } = await sb
+  const { data, error } = await sb
     .from("trips")
     .delete()
-    .eq("id", Number(id));
+    .eq("id", Number(id))
+    .select("id"); // <- geeft terug wat er echt verwijderd is
 
   if (error) throw error;
-  return true;
+  return data; // bv: [{id: 7}] of [] als er niks is verwijderd
 }
+
 
 
 const { useState, useEffect, useMemo } = React;
