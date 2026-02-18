@@ -733,12 +733,54 @@ useEffect(() => {
   (console.log("RENDER planning length:", planning?.length), planning)
     .slice(0, 3)
     .map(p => (
-      <div key={p.id} className="p-3 border border-gray-200 rounded-xl">
-        <div className="font-bold">{p.title}</div>
-        <div className="text-sm opacity-70">
-          {p.date} • {p.owner ?? "-"}
-        </div>
+      <div
+  key={p.id}
+  className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
+>
+  <div
+    className={`absolute left-0 top-0 bottom-0 w-2 ${
+      p.owner === "Bas"
+        ? "bg-blue-500"
+        : p.owner === "Annabel"
+        ? "bg-purple-500"
+        : "bg-gray-400"
+    }`}
+  ></div>
+
+  <div className="flex items-center gap-4">
+    <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
+      <span className="text-[9px] font-black text-red-600 uppercase leading-none">
+        {new Date(p.date).toLocaleDateString("nl-NL", { weekday: "short" })}
+      </span>
+      <span className="text-lg font-black text-gray-800 leading-tight">
+        {new Date(p.date).toLocaleDateString("nl-NL", { day: "numeric" })}
+      </span>
+    </div>
+
+    <div>
+      <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">
+        {p.title}
+      </p>
+      <div className="flex items-center gap-2 mt-1">
+        <span
+          className={`text-[9px] font-black uppercase ${
+            p.owner === "Bas"
+              ? "text-blue-500"
+              : p.owner === "Annabel"
+              ? "text-purple-500"
+              : "text-gray-400"
+          }`}
+        >
+          {p.owner ?? "-"}
+        </span>
+        <span className="text-gray-300 text-[10px]">•</span>
+        <span className="text-[9px] font-black text-gray-400 uppercase italic">
+          Hele dag
+        </span>
       </div>
+    </div>
+  </div>
+</div>
     ))
 )}
 </div>
