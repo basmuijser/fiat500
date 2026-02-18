@@ -730,12 +730,12 @@ useEffect(() => {
       Geen plannen
     </p>
   ) : (
-   planning
-  .slice(0, 3)
-  .map(p => (
-    <div key={p.id} className="...">...</div>
-  ))
- )}
+  (console.log("RENDER planning length:", planning?.length), planning)
+    .slice(0, 3)
+    .map(p => (
+      <div key={p.id} className="...">...</div>
+    ))
+)}
 </div>
 </div>
 
