@@ -702,19 +702,14 @@ useEffect(() => {
       Geen plannen
     </p>
   ) : (
-    planning
-      .filter(...)
-      .sort(...)
-      .slice(0, 3)
-      .map(p => (
-        <div key={p.id} className="...">
-          ...
-        </div>
-      ))
-  )}
+   planning
+  .slice(0, 3)
+  .map(p => (
+    <div key={p.id} className="...">...</div>
+  ))
+ )}
 </div>
-
-
+</div>
 
 
 
