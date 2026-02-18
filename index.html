@@ -545,16 +545,16 @@ useEffect(() => {
 
   const load = async () => {
   try {
-    setPlanningError("");
-    setPlanningLoading(true);
+  console.log("PLANNING load() start");
+  setPlanningError("");
+  setPlanningLoading(true);
 
-    const rows = await sbFetchPlanning();
+  const rows = await sbFetchPlanning();
+  console.log("planning rows:", rows);
 
-    console.log("planning rows:", rows);   // ✅ hier
+  if (alive) setPlanning(rows);
+} catch (e) { ... }
 
-    if (alive) setPlanning(rows);
-
-  } catch (e) {
     if (alive) setPlanningError(e?.message || String(e));
   } finally {
     if (alive) setPlanningLoading(false);
