@@ -662,10 +662,32 @@ const handleDeleteRefuel = async (refuel) => {
                                           <p className="text-[9px] font-black text-blue-500 uppercase mb-2">Bas</p>
                                           <p className="text-2xl font-black text-blue-700">€{refuels[0].basShare?.toFixed(2) || '0.00'}</p>
                                        </div>
+                                        
                                        <div className="bg-purple-50/50 p-6 rounded-[35px] border border-purple-100 text-center">
                                           <p className="text-[9px] font-black text-purple-500 uppercase mb-2">Annabel</p>
                                           <p className="text-2xl font-black text-purple-700">€{refuels[0].annabelShare?.toFixed(2) || '0.00'}</p>
-                                       </div>
+                                       </div>                                    
+                                       {/* Laatste tankbeurt (details + verwijderen) */}
+<div className="mt-5 flex items-center justify-between bg-gray-50 rounded-[28px] px-5 py-4">
+  <div className="min-w-0">
+    <p className="text-sm font-black truncate">
+      €{Number(refuels[0].cost || 0).toFixed(2)} • {refuels[0].km} km
+    </p>
+    <p className="text-xs opacity-60">
+      {new Date(refuels[0].date).toLocaleDateString("nl-NL")}
+    </p>
+  </div>
+
+  <button
+    onClick={() => handleDeleteRefuel(refuels[0])}
+    disabled={refuelsDeletingIdsRef.current.has(String(refuels[0].id))}
+    className="p-3 text-gray-500 hover:text-red-600 active:scale-95 disabled:opacity-40"
+    title="Verwijder tankbeurt"
+  >
+    <i className="bi bi-trash3-fill text-xl"></i>
+  </button>
+</div>
+ 
                                     </div>
                                   </div>
                                 )}
