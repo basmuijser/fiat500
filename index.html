@@ -176,14 +176,47 @@ async function sbInsertPlanning(item) {
 }
 
   async function sbDeletePlanning(id) {
-    const { error } = await sb
+  const { error } = await sb
     .from("planning")
     .delete()
     .eq("id", id);
 
   if (error) throw error;
-
   return true;
+}
+
+// ✅ 1 centrale handler: Supabase delete + Home state + Agenda sync
+async function handleDeletePlanning(item) {
+  const id = String(item?.id ?? "");
+  if (!id) return;
+
+  try {
+    setPlanningError("");
+    await sbDeletePlanning(id);
+
+    // Home / planning direct bijwerken
+    setPlanning((prev) => (prev ?? []).filter((x) => String(x.id) !== id));
+
+    // Agenda sync (oude items zonder koppeling + nieuwe met koppeling)
+    setReservations((prev) =>
+      (prev ?? []).filter((r) => {
+        const linked = String(r?._sbPlanningId ?? "");
+        if (linked) return linked !== id;
+
+        const sameTitle = String(r?.note ?? "") === String(item?.title ?? "");
+        const sameDate = String(r?.startDate ?? "") === String(item?.date ?? "");
+        const sameOwner = String(r?.driver ?? "") === String(item?.owner ?? "");
+        return !(sameTitle && sameDate && sameOwner);
+      })
+    );
+
+    showToast("Reservering verwijderd");
+  } catch (e) {
+    setPlanningError(e?.message || String(e));
+    showToast("Verwijderen mislukt");
+  }
+}
+
 }
 
 
@@ -736,62 +769,59 @@ useEffect(() => {
     <p className="text-center py-6 text-red-500 italic font-bold uppercase text-[10px]">
       {planningError}
     </p>
-  ) : planning.length === 0 ? (
+  ) : (planning?.length ?? 0) === 0 ? (
     <p className="text-center py-6 text-gray-300 italic font-bold uppercase text-[10px]">
       Geen plannen
     </p>
   ) : (
-  (console.log("RENDER planning length:", planning?.length), planning)
-    .slice(0, 3)
-    .map(p => (
-  <div
-    key={p.id}
-    className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
-  >
-    <div
-      className={`absolute left-0 top-0 bottom-0 w-2 ${
-        p.owner === "Bas"
-          ? "bg-blue-500"
-          : p.owner === "Annabel"
-          ? "bg-purple-500"
-          : "bg-gray-400"
-      }`}
-    />
+    (planning ?? [])
+      .slice(0, 3)
+      .map((p) => (
+        <div
+          key={p.id}
+          className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
+        >
+          <div
+            className={`absolute left-0 top-0 bottom-0 w-2 ${
+              p.owner === "Bas"
+                ? "bg-blue-500"
+                : p.owner === "Annabel"
+                ? "bg-purple-500"
+                : "bg-gray-400"
+            }`}
+          />
 
-    <div className="flex items-center gap-4">
-      <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
-        <span className="text-[9px] font-black text-red-600 uppercase leading-none">
-          {new Date(p.date).toLocaleDateString("nl-NL", { weekday: "short" })}
-        </span>
-        <span className="text-lg font-black text-gray-800 leading-tight">
-          {new Date(p.date).toLocaleDateString("nl-NL", { day: "numeric" })}
-        </span>
-      </div>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
+              <span className="text-[9px] font-black text-red-600 uppercase leading-none">
+                {new Date(p.date).toLocaleDateString("nl-NL", { weekday: "short" })}
+              </span>
+              <span className="text-lg font-black text-gray-800 leading-tight">
+                {new Date(p.date).toLocaleDateString("nl-NL", { day: "numeric" })}
+              </span>
+            </div>
 
-      <div>
-        <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">
-          {p.title}
-        </p>
-        <div className="text-[9px] font-black text-gray-400 uppercase italic mt-1">
-          {(p.owner ?? "-") + " • HELE DAG"}
+            <div>
+              <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">
+                {p.title}
+              </p>
+              <div className="text-[9px] font-black text-gray-400 uppercase italic mt-1">
+                {(p.owner ?? "-") + " • HELE DAG"}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleDeletePlanning(p)}
+            className="w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
+            title="Verwijder reservering"
+          >
+            <i className="bi bi-trash3-fill text-xl"></i>
+          </button>
         </div>
-      </div>
-    </div>
-
-    <button
-      onClick={async () => {
-        await sbDeletePlanning(p.id);
-        setPlanning((prev) => (prev ?? []).filter((x) => x.id !== p.id));
-        showToast("Reservering verwijderd");
-      }}
-      className="w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
-      title="Verwijder reservering"
-    >
-      <i className="bi bi-trash3-fill text-xl"></i>
-    </button>
-  </div>
-))
-
+      ))
+  )}
+</div>
 
 
 
@@ -938,7 +968,9 @@ console.log("UI res:", res);
     owner: res.driver ?? res.owner ?? null
   });
 
-  setReservations((prev) => [res, ...(prev ?? [])]);      
+  // ✅ koppel lokale agenda-item aan Supabase planning row
+setReservations((prev) => [{ ...res, _sbPlanningId: saved.id }, ...(prev ?? [])]);
+     
 
   // 2️⃣ Update Home-state direct (zodat je het meteen ziet)
   setPlanning((prev) => {
