@@ -110,6 +110,91 @@ async function sbInsertTrip(appTrip) {
   return data; // bv: [{id: 7}] of [] als er niks is verwijderd
 }
 
+// ===== Supabase Refuels (read/write) =====
+async function sbFetchRefuels() {
+  const { data, error } = await sb
+    .from("refuels")
+    .select("id, km, cost, bas_share, annabel_share, date")
+    .order("date", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map(row => ({
+    id: String(row.id),
+    km: Number(row.km ?? 0),
+    cost: Number(row.cost ?? 0),
+    basShare: Number(row.bas_share ?? 0),
+    annabelShare: Number(row.annabel_share ?? 0),
+    date: row.date || new Date().toISOString(),
+  }));
+}
+
+async function sbInsertRefuel(appRefuel) {
+  const payload = {
+    km: Number(appRefuel.km ?? 0),
+    cost: Number(appRefuel.cost ?? 0),
+    bas_share: Number(appRefuel.basShare ?? 0),
+    annabel_share: Number(appRefuel.annabelShare ?? 0),
+    date: appRefuel.date || new Date().toISOString(),
+  };
+
+  const { data, error } = await sb
+    .from("refuels")
+    .insert([payload])
+    .select("id, km, cost, bas_share, annabel_share, date")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: String(data.id),
+    km: Number(data.km ?? 0),
+    cost: Number(data.cost ?? 0),
+    basShare: Number(data.bas_share ?? 0),
+    annabelShare: Number(data.annabel_share ?? 0),
+    date: data.date || new Date().toISOString(),
+  };
+}
+
+async function sbUpdateRefuel(id, patch) {
+  const payload = {};
+  if (patch.km != null) payload.km = Number(patch.km);
+  if (patch.cost != null) payload.cost = Number(patch.cost);
+  if (patch.basShare != null) payload.bas_share = Number(patch.basShare);
+  if (patch.annabelShare != null) payload.annabel_share = Number(patch.annabelShare);
+  if (patch.date != null) payload.date = patch.date;
+
+  const { data, error } = await sb
+    .from("refuels")
+    .update(payload)
+    .eq("id", Number(id))
+    .select("id, km, cost, bas_share, annabel_share, date")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: String(data.id),
+    km: Number(data.km ?? 0),
+    cost: Number(data.cost ?? 0),
+    basShare: Number(data.bas_share ?? 0),
+    annabelShare: Number(data.annabel_share ?? 0),
+    date: data.date || new Date().toISOString(),
+  };
+}
+
+async function sbDeleteRefuel(id) {
+  const { data, error } = await sb
+    .from("refuels")
+    .delete()
+    .eq("id", Number(id))
+    .select("id");
+
+  if (error) throw error;
+  return data; // bv [{id: 12}] of []
+}
+        
         // ===== Supabase App Settings (startKm) =====
 async function sbFetchStartKm() {
   const { data, error } = await sb
@@ -176,6 +261,9 @@ const { useState, useEffect, useMemo, useRef } = React;
             const [tripsLoading, setTripsLoading] = useState(false);
             const [tripsError, setTripsError] = useState("");
 
+            const [refuelsLoading, setRefuelsLoading] = useState(false);
+            const [refuelsError, setRefuelsError] = useState("");
+
             const [successMsg, setSuccessMsg] = useState(null);
             const [showSyncMenu, setShowSyncMenu] = useState(false);
 
@@ -237,7 +325,7 @@ useEffect(() => {
     }
   })();
 }, [startKm, isLoaded, startKmSyncReady]);
-        
+
 
 // 👇 daarna pas je trips polling effect
 useEffect(() => {
@@ -273,6 +361,37 @@ console.log("Polling refresh...");
     if (timer) clearInterval(timer);
   };
 }, [isLoaded]);
+
+
+useEffect(() => {
+  if (!isLoaded) return;
+
+  let alive = true;
+  let timer = null;
+
+  const refresh = async (showLoading = false) => {
+    try {
+      setRefuelsError("");
+      if (showLoading) setRefuelsLoading(true);
+
+      const rows = await sbFetchRefuels();
+      if (alive) setRefuels(rows);
+    } catch (e) {
+      if (alive) setRefuelsError(e?.message || String(e));
+    } finally {
+      if (alive && showLoading) setRefuelsLoading(false);
+    }
+  };
+
+  refresh(true);
+  timer = setInterval(() => refresh(false), 10000);
+
+  return () => {
+    alive = false;
+    if (timer) clearInterval(timer);
+  };
+}, [isLoaded]);
+
 
 
 
@@ -558,7 +677,27 @@ console.log("Polling refresh...");
 )}
 
 
-                        {activeTab === 'tank' && <TankTab stats={currentStats} onAdd={(r) => {setRefuels([r, ...refuels]); setActiveTab('home'); showToast('Getankt!');}} />}
+                        {activeTab === 'tank' && (
+  <TankTab
+    stats={currentStats}
+    onAdd={async (r) => {
+  try {
+    setRefuelsError("");
+    setRefuelsLoading(true);
+
+    const saved = await sbInsertRefuel(r);
+    setRefuels((prev) => [saved, ...prev]);
+
+    setActiveTab("home");
+    showToast("Getankt!");
+  } catch (e) {
+    setRefuelsError(e?.message || String(e));
+    showToast("Opslaan mislukt");
+  } finally {
+    setRefuelsLoading(false);
+  }
+}}
+
                         {activeTab === 'agenda' && <AgendaTab reservations={reservations} onAdd={(res) => {setReservations([res, ...reservations]); showToast('Gereserveerd!');}} onDelete={(id) => setReservations(reservations.filter(r => r.id !== id))} />}
                     </main>
 
