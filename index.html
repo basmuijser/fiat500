@@ -581,6 +581,7 @@ useEffect(() => {
 
     const rows = await sbFetchPlanning();
     console.log("planning rows:", rows);
+    console.log("first row:", rows?.[0]);
 
     if (alive) setPlanning(rows);
   } catch (e) {
