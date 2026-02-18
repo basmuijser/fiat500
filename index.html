@@ -880,10 +880,28 @@ useEffect(() => {
 {activeTab === 'agenda' && (
   <AgendaTab
     reservations={reservations}
-    onAdd={(res) => {
-      setReservations((prev) => [res, ...prev]);
-      showToast("Gereserveerd!");
-    }}
+    onAdd={async (res) => {
+  // 1️⃣ Schrijf naar Supabase planning
+console.log("UI res:", res);
+  const saved = await sbInsertPlanning({
+    title: res.note ?? res.title ?? "Afspraak",
+    date: res.startDate ?? res.date,   // moet "YYYY-MM-DD" zijn
+    owner: res.driver ?? res.owner ?? null
+  });
+
+  setReservations((prev) => [res, ...(prev ?? [])]);      
+
+  // 2️⃣ Update Home-state direct (zodat je het meteen ziet)
+  setPlanning((prev) => {
+    const next = [saved, ...(prev ?? [])];
+    next.sort((a, b) => (a.date > b.date ? 1 : -1));
+    return next;
+  });
+
+  showToast("Afspraak opgeslagen!");
+  setActiveTab("home");
+}}
+
     onDelete={(id) =>
       setReservations((prev) => prev.filter((r) => r.id !== id))
     }
