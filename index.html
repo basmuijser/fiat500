@@ -532,10 +532,38 @@ const { useState, useEffect, useMemo } = React;
   const annabelShare = (cost * stats.annabelPct) / 100;
 
   const isValid = currentKm >= stats.currentOdometer && cost > 0;
+  console.log("TankTab debug:", { price, km, cost, currentKm, odometer: stats.currentOdometer, isValid });
+
 
 return (
   <div className="bg-white p-10 rounded-[60px] shadow-2xl space-y-10 animate-fade-up border-[6px] border-gray-50">
-    {/* ... jouw bestaande TankTab JSX ... */}
+    <div className="space-y-8">
+  <div className="relative">
+    <span className="absolute left-10 top-1/2 -translate-y-1/2 text-5xl font-black text-green-600/20">€</span>
+    <input
+      type="text"
+      placeholder="0,00"
+      value={price}
+      onChange={(e) => setPrice(e.target.value)}
+      className="w-full p-12 pl-20 bg-[#FAF9F6] rounded-[45px] border-2 border-gray-100 font-black text-7xl text-green-600 text-center outline-none shadow-inner"
+    />
+  </div>
+
+  <div className="bg-[#FAF9F6] p-10 rounded-[45px] border-2 border-gray-100 text-center shadow-inner">
+    <p className="text-[11px] font-black text-gray-400 uppercase mb-4 tracking-widest">
+      Nieuwe Kilometerstand
+    </p>
+    <input
+      type="number"
+      value={km}
+      onChange={(e) => setKm(e.target.value)}
+      className={`w-full bg-transparent text-5xl font-black text-center outline-none tabular-nums ${
+        currentKm < stats.currentOdometer ? "text-red-500" : "text-gray-800"
+      }`}
+    />
+  </div>
+</div>
+
 
 <button
   disabled={!isValid}
