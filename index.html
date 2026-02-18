@@ -129,6 +129,23 @@ async function sbFetchRefuels() {
     date: row.date || new Date().toISOString(),
   }));
 }
+        
+async function sbFetchPlanning() {
+  const { data, error } = await supabase
+    .from("planning")
+    .select("*")
+    .order("date", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map(row => ({
+  id: String(row.id),
+  title: row.title,
+  date: row.date,
+  owner: row.owner ?? null,
+  created_at: row.created_at,
+  updated_at: row.updated_at
+})); 
+}        
 
 async function sbInsertRefuel(appRefuel) {
   const payload = {
@@ -267,6 +284,11 @@ const { useState, useEffect, useMemo, useRef } = React;
 
             const [successMsg, setSuccessMsg] = useState(null);
             const [showSyncMenu, setShowSyncMenu] = useState(false);
+
+            const [planning, setPlanning] = useState([]);
+            const [planningLoading, setPlanningLoading] = useState(false);
+            const [planningError, setPlanningError] = useState("");
+
 
             useEffect(() => {
                 const t = localStorage.getItem('f500_v10_trips');
@@ -517,6 +539,35 @@ const handleDeleteRefuel = async (refuel) => {
     handleDeleteRefuel(r);
   };
 }, [refuels]);
+
+// ===== Planning polling (zelfde als trips/refuels) =====
+useEffect(() => {
+  let alive = true;
+
+  const load = async () => {
+    try {
+      setPlanningError("");
+      setPlanningLoading(true);
+
+      const rows = await sbFetchPlanning();
+      if (alive) setPlanning(rows);
+    } catch (e) {
+      if (alive) setPlanningError(e?.message || String(e));
+    } finally {
+      if (alive) setPlanningLoading(false);
+    }
+  };
+
+  load();
+
+  const interval = setInterval(load, 10000);
+
+  return () => {
+    alive = false;
+    clearInterval(interval);
+  };
+}, []);
+            
           
 
             const handleExport = () => {
