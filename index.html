@@ -110,9 +110,36 @@ async function sbInsertTrip(appTrip) {
   return data; // bv: [{id: 7}] of [] als er niks is verwijderd
 }
 
+        // ===== Supabase App Settings (startKm) =====
+async function sbFetchStartKm() {
+  const { data, error } = await sb
+    .from("app_settings")
+    .select("value")
+    .eq("key", "startKm")
+    .maybeSingle();
 
+  if (error) throw error;
 
-const { useState, useEffect, useMemo } = React;
+  const v = data?.value?.value;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function sbUpsertStartKm(km) {
+  const payload = {
+    key: "startKm",
+    value: { value: Number(km) },
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await sb
+    .from("app_settings")
+    .upsert(payload, { onConflict: "key" });
+
+  if (error) throw error;
+}
+
+const { useState, useEffect, useMemo, useRef } = React;
 
       
         const Counter = ({ value, decimals = 0 }) => {
@@ -138,6 +165,11 @@ const { useState, useEffect, useMemo } = React;
             const [refuels, setRefuels] = useState([]);
             const [reservations, setReservations] = useState([]);
             const [startKm, setStartKm] = useState(0);
+
+            // startKm sync guards
+            const [startKmSyncReady, setStartKmSyncReady] = useState(false);
+            const startKmLastPushedRef = useRef(null);
+
             const [activeTab, setActiveTab] = useState('home');
             const [isLoaded, setIsLoaded] = useState(false);
 
@@ -159,7 +191,59 @@ const { useState, useEffect, useMemo } = React;
                 setIsLoaded(true);
             }, []);
 
-            useEffect(() => {
+            setIsLoaded(true);
+}, []);
+
+
+useEffect(() => {
+  if (!isLoaded) return;
+
+  let alive = true;
+
+  (async () => {
+    try {
+      const remote = await sbFetchStartKm();
+      if (!alive) return;
+
+      if (remote !== null) {
+        setStartKm(remote);
+        localStorage.setItem("f500_v10_start", String(remote));
+        startKmLastPushedRef.current = remote;
+      }
+    } catch (e) {
+      console.log("startKm fetch failed:", e?.message || String(e));
+    } finally {
+      if (alive) setStartKmSyncReady(true);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [isLoaded]);
+
+useEffect(() => {
+  if (!isLoaded) return;
+  if (!startKmSyncReady) return;
+
+  const km = Number(startKm);
+  if (!Number.isFinite(km) || km <= 0) return;
+
+  if (startKmLastPushedRef.current === km) return;
+
+  (async () => {
+    try {
+      await sbUpsertStartKm(km);
+      startKmLastPushedRef.current = km;
+    } catch (e) {
+      console.log("startKm push failed:", e?.message || String(e));
+    }
+  })();
+}, [startKm, isLoaded, startKmSyncReady]);
+        
+
+// 👇 daarna pas je trips polling effect
+useEffect(() => {
   if (!isLoaded) return;
 
   let alive = true;
