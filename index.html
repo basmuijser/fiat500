@@ -147,6 +147,33 @@ async function sbFetchPlanning() {
     updated_at: row.updated_at
   }));
 }
+        
+async function sbInsertPlanning(item) {
+  const payload = {
+    title: item.title,
+    date: item.date,          // "YYYY-MM-DD"
+    owner: item.owner ?? null,
+  };
+    
+ console.log("INSERTING:", payload);
+    
+  const { data, error } = await sb
+    .from("planning")
+    .insert([payload])
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: String(data.id),
+    title: data.title,
+    date: data.date,
+    owner: data.owner ?? null,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
+}
        
 
 async function sbInsertRefuel(appRefuel) {
