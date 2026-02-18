@@ -507,6 +507,18 @@ const handleDeleteRefuel = async (refuel) => {
   }
 };
 
+  useEffect(() => {
+  window._debugDeleteRefuel = (idx = 0) => {
+    const r = refuels[idx];
+    if (!r) {
+      console.log("Geen refuel op index", idx);
+      return;
+    }
+    handleDeleteRefuel(r);
+  };
+}, [refuels]);
+          
+
             const handleExport = () => {
                 const data = JSON.stringify({ trips, refuels, reservations, startKm });
                 navigator.clipboard.writeText(data);
