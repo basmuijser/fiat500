@@ -174,7 +174,18 @@ async function sbInsertPlanning(item) {
     updated_at: data.updated_at
   };
 }
-       
+
+  async function sbDeletePlanning(id) {
+    const { error } = await sb
+    .from("planning")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+
+  return true;
+}
+
 
 async function sbInsertRefuel(appRefuel) {
   const payload = {
@@ -944,9 +955,11 @@ console.log("UI res:", res);
   setActiveTab("home");
 }}
 
-    onDelete={(id) =>
-      setReservations((prev) => prev.filter((r) => r.id !== id))
-    }
+  onDelete={(id) => {
+  console.log("AGENDA onDelete id:", id);
+  setReservations((prev) => (prev ?? []).filter((r) => r.id !== id));
+}}
+
   />
 )}
 
