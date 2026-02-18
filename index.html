@@ -263,6 +263,7 @@ const { useState, useEffect, useMemo, useRef } = React;
 
             const [refuelsLoading, setRefuelsLoading] = useState(false);
             const [refuelsError, setRefuelsError] = useState("");
+            const refuelsDeletingIdsRef = useRef(new Set());
 
             const [successMsg, setSuccessMsg] = useState(null);
             const [showSyncMenu, setShowSyncMenu] = useState(false);
@@ -437,6 +438,7 @@ useEffect(() => {
     showToast("Lokale rit verwijderd");
     return;
   }
+               
 
   // 2) Supabase delete
   try {
@@ -447,6 +449,8 @@ useEffect(() => {
     if (!deleted || deleted.length === 0) {
       throw new Error("Niets verwijderd (RLS/policy?)");
     }
+      
+      
 
     // UI updaten
     setTrips((prev) => prev.filter((t) => t.id !== trip.id));
@@ -459,6 +463,49 @@ useEffect(() => {
   }
 };
  
+const handleDeleteRefuel = async (refuel) => {
+  const id = String(refuel?.id ?? "");
+  if (!id) return;
+
+  const deleting = refuelsDeletingIdsRef.current;
+
+  // 1) Blokkeer dubbele klik op dezelfde tankbeurt
+  if (deleting.has(id)) return;
+  deleting.add(id);
+
+  try {
+    setRefuelsError("");
+    setRefuelsLoading(true);
+
+    const deletedRows = await sbDeleteRefuel(id);
+
+    // 2) RLS/policy blokkeert vaak zonder harde error -> 0 rows deleted
+    if (!deletedRows || deletedRows.length === 0) {
+      throw new Error("Verwijderen geblokkeerd (RLS/policy?)");
+    }
+
+    // 3) State updaten NA succesvolle delete (geen fallback, gewoon UI sync)
+    setRefuels((curr) => curr.filter((r) => String(r.id) !== id));
+  } catch (e) {
+    const msg = e?.message || String(e);
+
+    const looksLikeRls =
+      msg.toLowerCase().includes("row-level security") ||
+      msg.toLowerCase().includes("rls") ||
+      msg.toLowerCase().includes("permission denied") ||
+      msg.toLowerCase().includes("not allowed") ||
+      msg.toLowerCase().includes("policy");
+
+    setRefuelsError(
+      looksLikeRls
+        ? "Delete geblokkeerd door RLS/policy (geen rechten om tankbeurten te verwijderen)."
+        : msg
+    );
+  } finally {
+    setRefuelsLoading(false);
+    deleting.delete(id);
+  }
+};
 
             const handleExport = () => {
                 const data = JSON.stringify({ trips, refuels, reservations, startKm });
