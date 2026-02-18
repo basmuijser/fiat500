@@ -163,24 +163,37 @@ const { useState, useEffect, useMemo } = React;
   if (!isLoaded) return;
 
   let alive = true;
+  let timer = null;
 
-  (async () => {
+  const refresh = async (showLoading = false) => {
     try {
       setTripsError("");
-      setTripsLoading(true);
+      if (showLoading) setTripsLoading(true);
 
+console.log("Polling refresh...");
+    
       const rows = await sbFetchTrips();
       if (alive) setTrips(rows);
-
     } catch (e) {
       if (alive) setTripsError(e?.message || String(e));
     } finally {
-      if (alive) setTripsLoading(false);
+      if (alive && showLoading) setTripsLoading(false);
     }
-  })();
+  };
 
-  return () => { alive = false; };
+  // 1) Meteen ophalen (met loader)
+  refresh(true);
+
+  // 2) Daarna elke 10 seconden (zonder loader)
+  timer = setInterval(() => refresh(false), 10000);
+
+  return () => {
+    alive = false;
+    if (timer) clearInterval(timer);
+  };
 }, [isLoaded]);
+
+
 
 
             useEffect(() => {
