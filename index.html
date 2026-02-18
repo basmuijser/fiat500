@@ -216,6 +216,36 @@ const { useState, useEffect, useMemo } = React;
                 setTimeout(() => setSuccessMsg(null), 2000);
             };
 
+           const handleDeleteTrip = async (trip) => {
+  // 1) Direct uit UI verwijderen als het een lokale trip is
+  if (trip?._source === "local") {
+    setTrips((prev) => prev.filter((t) => t.id !== trip.id));
+    showToast("Lokale rit verwijderd");
+    return;
+  }
+
+  // 2) Supabase delete
+  try {
+    setTripsError("");
+    setTripsLoading(true);
+
+    const deleted = await sbDeleteTrip(trip.id); // verwacht [{id: ...}]
+    if (!deleted || deleted.length === 0) {
+      throw new Error("Niets verwijderd (RLS/policy?)");
+    }
+
+    // UI updaten
+    setTrips((prev) => prev.filter((t) => t.id !== trip.id));
+    showToast("Rit verwijderd");
+  } catch (e) {
+    setTripsError(e?.message || String(e));
+    showToast("Verwijderen mislukt");
+  } finally {
+    setTripsLoading(false);
+  }
+};
+ 
+
             const handleExport = () => {
                 const data = JSON.stringify({ trips, refuels, reservations, startKm });
                 navigator.clipboard.writeText(data);
@@ -384,8 +414,18 @@ const { useState, useEffect, useMemo } = React;
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    <p className="text-2xl font-black text-red-600 tabular-nums">+{t.dist}</p>
-                                                </div>
+                                                      <p className="text-2xl font-black text-red-600 tabular-nums">
+                                                        +{t.dist}
+                                                      </p>
+                                                    
+                                                      <button
+                                                        onClick={() => handleDeleteTrip(t)}
+                                                        className="text-gray-200 hover:text-red-500 p-3 transition-colors active:scale-90"
+                                                        title="Verwijder rit"
+                                                      >
+                                                        <i className="bi bi-trash3-fill text-xl"></i>
+                                                      </button>
+                                                    </div>
                                             </div>
                                         ))}
                                     </div>
