@@ -739,6 +739,9 @@ const handleDeleteRefuel = async (refuel) => {
                         {activeTab === 'tank' && (
   <TankTab
     stats={currentStats}
+    refuels={refuels}
+    onDelete={handleDeleteRefuel}
+    isDeleting={(id) => refuelsDeletingIdsRef.current.has(String(id))}
     onAdd={async (r) => {
       try {
         setRefuelsError("");
@@ -758,6 +761,7 @@ const handleDeleteRefuel = async (refuel) => {
     }}
   />
 )}
+
 
 {activeTab === 'agenda' && (
   <AgendaTab
@@ -881,7 +885,7 @@ const handleDeleteRefuel = async (refuel) => {
 }
 
 
-        function TankTab({ stats, onAdd }) {
+        function TankTab({ stats, onAdd, refuels, onDelete, isDeleting }) {
   const [price, setPrice] = useState("");
   const [km, setKm] = useState(String(stats.currentOdometer));
 
@@ -941,6 +945,44 @@ return (
 >
   Tankbeurt Opslaan
 </button>
+      {/* Recente tankbeurten */}
+<div className="pt-6 border-t border-gray-100">
+  <h3 className="text-sm font-black uppercase tracking-widest opacity-60 mb-4">
+    Recente tankbeurten
+  </h3>
+
+  {(!refuels || refuels.length === 0) ? (
+    <p className="text-sm opacity-50">Nog geen tankbeurten.</p>
+  ) : (
+    <div className="space-y-3">
+      {refuels.slice(0, 5).map((r) => (
+        <div
+          key={r.id}
+          className="flex items-center justify-between bg-gray-50 rounded-[28px] px-5 py-4"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-black truncate">
+              €{Number(r.cost || 0).toFixed(2)} • {r.km} km
+            </p>
+            <p className="text-xs opacity-60">
+              {new Date(r.date).toLocaleDateString("nl-NL")}
+            </p>
+          </div>
+
+          <button
+            onClick={() => onDelete(r)}
+            disabled={!!isDeleting?.(r.id)}
+            className="p-3 rounded-[18px text-gray-500 hover:text-red-600 active:scale-95 disabled:opacity-40"
+            title="Verwijder tankbeurt"
+          >
+            <i className="bi bi-trash3-fill text-xl"></i>
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
 
 
   </div>
