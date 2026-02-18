@@ -99,6 +99,16 @@ async function sbInsertTrip(appTrip) {
   };
 }
 
+    async function sbDeleteTrip(id) {
+  const { error } = await sb
+    .from("trips")
+    .delete()
+    .eq("id", Number(id));
+
+  if (error) throw error;
+  return true;
+}
+
 
 const { useState, useEffect, useMemo } = React;
 
