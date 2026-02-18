@@ -800,30 +800,29 @@ useEffect(() => {
   <TripTab
     lastKm={currentStats.currentOdometer}
     onAdd={async (t) => {
-      try {
-        setTripsError("");
-        setTripsLoading(true);
+  try {
+    setTripsError("");
+    setTripsLoading(true);
 
-        const saved = await sbInsertTrip(t);
-        setTrips((prev) => [saved, ...prev]);
+    const saved = await sbInsertTrip(t);
+    setTrips((prev) => [saved, ...prev]);
 
-        setActiveTab("home");
-        showToast("Rit bewaard!");
-      } catch (e) {
-  setTripsError(e?.message || String(e));
+    setActiveTab("home");
+    showToast("Rit bewaard!");
+  } catch (e) {
+    setTripsError(e?.message || String(e));
 
-  const localTrip = { ...t, _source: "local" };
-  setTrips((prev) => [localTrip, ...prev]);
+    const localTrip = { ...t, _source: "local" };
+    setTrips((prev) => [localTrip, ...prev]);
 
-  showToast("Supabase mislukt — lokaal opgeslagen");
-}
-
-        finally {
-        setTripsLoading(false);
-      }
+    showToast("Supabase mislukt — lokaal opgeslagen");
+  } finally {
+    setTripsLoading(false);
+  }
     }}
   />
 )}
+
 
 
                         {activeTab === 'tank' && (
