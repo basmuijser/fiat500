@@ -689,27 +689,49 @@ useEffect(() => {
                                     <h2 className="text-xl font-black italic uppercase tracking-tight">Planning</h2>
                                   </div>
                                   <div className="space-y-3">
-                                    {reservations.length === 0 ? (
-                                      <p className="text-center py-6 text-gray-300 italic font-bold uppercase text-[10px]">Geen plannen</p>
-                                    ) : (
-                                      reservations
-                                        .filter(r => new Date(r.startDate) >= new Date(new Date().setHours(0,0,0,0)))
-                                        .sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-                                        .slice(0, 3)
-                                        .map(res => (
-                                          <div key={res.id} className="flex justify-between items-center p-4 bg-[#FAF9F6] rounded-[25px] border border-gray-100">
-                                            <div className="flex items-center gap-3">
-                                              <div className={`w-2 h-8 rounded-full ${res.driver === 'Bas' ? 'bg-blue-500' : res.driver === 'Annabel' ? 'bg-purple-500' : 'bg-gray-800'}`}></div>
-                                              <div>
-                                                <p className="font-black text-gray-800 text-xs">{res.note}</p>
-                                                <p className="text-[9px] text-gray-400 font-bold uppercase">{new Date(res.startDate).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} • {res.driver}</p>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))
-                                    )}
-                                  </div>
-                                </div>
+  {planningLoading ? (
+    <p className="text-center py-6 text-gray-300 italic font-bold uppercase text-[10px]">
+      Laden...
+    </p>
+  ) : planningError ? (
+    <p className="text-center py-6 text-red-500 italic font-bold uppercase text-[10px]">
+      {planningError}
+    </p>
+  ) : planning.length === 0 ? (
+    <p className="text-center py-6 text-gray-300 italic font-bold uppercase text-[10px]">
+      Geen plannen
+    </p>
+  ) : (
+    planning
+      .filter(p => new Date(p.date) >= new Date(new Date().setHours(0,0,0,0)))
+      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3)
+      .map(p => (
+        <div key={p.id} className="flex justify-between items-center p-4 bg-[#FAF9F6] rounded-[25px] border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-2 h-8 rounded-full ${
+                p.owner?.toLowerCase() === "annabel"
+                  ? "bg-purple-500"
+                  : "bg-blue-500"
+              }`}
+            />
+            <div>
+              <p className="font-black text-gray-800 text-xs">{p.title}</p>
+              <p className="text-[9px] text-gray-400 font-bold uppercase">
+                {new Date(p.date).toLocaleDateString("nl-NL", {
+                  day: "numeric",
+                  month: "short"
+                })}
+                {p.owner ? ` • ${p.owner}` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))
+  )}
+</div>
+
 
                                 {/* Laatste Tank Split */}
                                 {refuels.length > 0 && (
