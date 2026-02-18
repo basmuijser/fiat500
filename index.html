@@ -206,9 +206,10 @@ console.log("Polling refresh...");
             }, [trips, refuels, startKm, reservations, isLoaded]);
 
             const currentStats = useMemo(() => {
-                const lastRefuelKm = refuels.length > 0 ? Math.max(...refuels.map(r => r.km)) : startKm;
-                const currentOdometer = Math.max(startKm, ...trips.map(t => t.endKm), ...refuels.map(r => r.km));
+                const lastRefuelKm = startKm; // tijdelijk: sync-proof baseline
+                const currentOdometer = Math.max(startKm, ...trips.map(t => t.endKm)); // refuels niet meenemen (want local-only)
                 const sessionTrips = trips.filter(t => t.endKm > lastRefuelKm);
+
                 let basKm = 0, annabelKm = 0, gastKm = 0;
                 sessionTrips.forEach(t => {
                     const tripStart = t.endKm - t.dist;
