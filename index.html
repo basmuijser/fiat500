@@ -131,21 +131,23 @@ async function sbFetchRefuels() {
 }
         
 async function sbFetchPlanning() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("planning")
     .select("*")
     .order("date", { ascending: true });
 
   if (error) throw error;
+
   return (data ?? []).map(row => ({
-  id: String(row.id),
-  title: row.title,
-  date: row.date,
-  owner: row.owner ?? null,
-  created_at: row.created_at,
-  updated_at: row.updated_at
-})); 
-}        
+    id: String(row.id),
+    title: row.title,
+    date: row.date,
+    owner: row.owner ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }));
+}
+       
 
 async function sbInsertRefuel(appRefuel) {
   const payload = {
@@ -538,6 +540,7 @@ const handleDeleteRefuel = async (refuel) => {
     handleDeleteRefuel(r);
   };
 }, [refuels]);
+            
 
 // ===== Planning polling (zelfde als trips/refuels) =====
 useEffect(() => {
