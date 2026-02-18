@@ -713,14 +713,15 @@ useEffect(() => {
   />
 )}
 
+</main>
 
+<nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg nav-blur border-2 border-white rounded-[45px] p-2 flex justify-around shadow-2xl z-50 safe-bottom">
+  <NavBtn active={activeTab === 'home'} icon="bi-house-fill" label="Home" onClick={() => setActiveTab('home')} />
+  <NavBtn active={activeTab === 'ritten'} icon="bi-cursor-fill" label="Ritten" onClick={() => setActiveTab('ritten')} />
+  <NavBtn active={activeTab === 'agenda'} icon="bi-calendar3" label="Agenda" onClick={() => setActiveTab('agenda')} />
+  <NavBtn active={activeTab === 'tank'} icon="bi-fuel-pump-fill" label="Tanken" onClick={() => setActiveTab('tank')} />
+</nav>
 
-                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg nav-blur border-2 border-white rounded-[45px] p-2 flex justify-around shadow-2xl z-50 safe-bottom">
-                        <NavBtn active={activeTab === 'home'} icon="bi-house-fill" label="Home" onClick={() => setActiveTab('home')} />
-                        <NavBtn active={activeTab === 'ritten'} icon="bi-cursor-fill" label="Ritten" onClick={() => setActiveTab('ritten')} />
-                        <NavBtn active={activeTab === 'agenda'} icon="bi-calendar3" label="Agenda" onClick={() => setActiveTab('agenda')} />
-                        <NavBtn active={activeTab === 'tank'} icon="bi-fuel-pump-fill" label="Tanken" onClick={() => setActiveTab('tank')} />
-                    </nav>
                 </div>
             );
         }
