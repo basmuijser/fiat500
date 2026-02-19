@@ -186,36 +186,8 @@ async function sbInsertPlanning(item) {
 }
 
 // ✅ 1 centrale handler: Supabase delete + Home state + Agenda sync
-async function handleDeletePlanning(item) {
-  const id = String(item?.id ?? "");
-  if (!id) return;
+// (verwijderd) handleDeletePlanning staat binnen App()
 
-  try {
-    setPlanningError("");
-    await sbDeletePlanning(id);
-
-    // Home / planning direct bijwerken
-    setPlanning((prev) => (prev ?? []).filter((x) => String(x.id) !== id));
-
-    // Agenda sync (oude items zonder koppeling + nieuwe met koppeling)
-    setReservations((prev) =>
-      (prev ?? []).filter((r) => {
-        const linked = String(r?._sbPlanningId ?? "");
-        if (linked) return linked !== id;
-
-        const sameTitle = String(r?.note ?? "") === String(item?.title ?? "");
-        const sameDate = String(r?.startDate ?? "") === String(item?.date ?? "");
-        const sameOwner = String(r?.driver ?? "") === String(item?.owner ?? "");
-        return !(sameTitle && sameDate && sameOwner);
-      })
-    );
-
-    showToast("Reservering verwijderd");
-  } catch (e) {
-    setPlanningError(e?.message || String(e));
-    showToast("Verwijderen mislukt");
-  }
-}
 
 
 
@@ -850,11 +822,10 @@ useEffect(() => {
                                         </div>
                                       ))
                                     )}
-                                  </div>
+                                    </div>
+                                </div>
 
-
-
-
+                                                        
 
                                 {/* Laatste Tank Split */}
                                 {refuels.length > 0 && (
