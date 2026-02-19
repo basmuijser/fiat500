@@ -962,34 +962,27 @@ useEffect(() => {
   <AgendaTab
     planning={planning}
     onAdd={async (res) => {
-      // 1) Naar Supabase planning
-      const saved = await sbInsertPlanning({
-        title: res.note ?? res.title ?? "Afspraak",
-        date: res.startDate ?? res.date,
-        owner: res.driver ?? res.owner ?? null,
-      });
+  const saved = await sbInsertPlanning({
+    title: res.note ?? res.title ?? "Afspraak",
+    date: res.startDate ?? res.date,
+    owner: res.driver ?? res.owner ?? null,
+  });
 
-      // 2) Lokale planning state bijwerken (Agenda + Home gebruiken dit)
-      setPlanning((prev) => {
-        const next = [saved, ...(prev ?? [])];
-        next.sort((a, b) => (a.date > b.date ? 1 : -1));
-        return next;
-      });
+  setPlanning((prev) => {
+    const next = [saved, ...(prev ?? [])];
+    next.sort((a, b) => (a.date > b.date ? 1 : -1));
+    return next;
+  });
 
-      showToast("Afspraak opgeslagen!");
-    }}
-    onDelete={async (id) => {
-      await sbDeletePlanning(id);
-      setPlanning((prev) => (prev ?? []).filter((p) => String(p.id) !== String(id)));
-      showToast("Reservering verwijderd");
-    }}
-  />
-)}
+  showToast("Afspraak opgeslagen!");
+}}
+
 
 
 
   // ✅ koppel lokale agenda-item aan Supabase planning row
-  setReservations((prev) => [{ ...res, _sbPlanningId: saved.id }, ...(prev ?? [])]);
+  // (weg) Agenda rendert nu uit planning (Supabase), dus reservations-sync hier niet nodig
+
      
 
   // 2️⃣ Update Home-state direct (zodat je het meteen ziet)
