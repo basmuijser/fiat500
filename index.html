@@ -960,15 +960,33 @@ useEffect(() => {
 
 {activeTab === 'agenda' && (
   <AgendaTab
-    reservations={reservations}
+    planning={planning}
     onAdd={async (res) => {
-  // 1️⃣ Schrijf naar Supabase planning
-console.log("UI res:", res);
-  const saved = await sbInsertPlanning({
-    title: res.note ?? res.title ?? "Afspraak",
-    date: res.startDate ?? res.date,   // moet "YYYY-MM-DD" zijn
-    owner: res.driver ?? res.owner ?? null
-  });
+      // 1) Schrijf naar Supabase planning
+      const saved = await sbInsertPlanning({
+        title: res.note ?? res.title ?? "Afspraak",
+        date: res.startDate ?? res.date,
+        owner: res.driver ?? res.owner ?? null
+      });
+
+      // 2) Home-state direct bijwerken
+      setPlanning((prev) => {
+        const next = [saved, ...(prev ?? [])];
+        next.sort((a, b) => (a.date > b.date ? 1 : -1));
+        return next;
+      });
+
+      showToast("Afspraak opgeslagen!");
+      setActiveTab("home");
+    }}
+    onDelete={async (planningId) => {
+      await sbDeletePlanning(planningId);
+      setPlanning((prev) => (prev ?? []).filter((p) => String(p.id) !== String(planningId)));
+      showToast("Reservering verwijderd");
+    }}
+  />
+)}
+
 
   // ✅ koppel lokale agenda-item aan Supabase planning row
   setReservations((prev) => [{ ...res, _sbPlanningId: saved.id }, ...(prev ?? [])]);
@@ -1206,7 +1224,7 @@ return (
 );
 }
 
-        function AgendaTab({ reservations, onAdd, onDelete }) {
+        function AgendaTab({ planning, onAdd, onDelete }) {
             const [note, setNote] = useState('');
             const [driver, setDriver] = useState('Bas');
             const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1297,48 +1315,70 @@ return (
                     </div>
 
                     <div className="bg-white p-10 rounded-[60px] shadow-sm border border-gray-200/50">
-                        <h3 className="text-xs font-black text-gray-300 uppercase tracking-[0.3em] mb-10 text-center italic">Planning</h3>
-                        <div className="space-y-4">
-                            {reservations.length === 0 ? (
-                                <p className="text-center py-20 text-gray-300 italic font-bold uppercase text-[11px] tracking-widest opacity-40">De weg ligt nog open...</p>
-                            ) : reservations.sort((a,b) => new Date(a.startDate) - new Date(b.startDate)).map(res => {
-                                const isSingleDay = res.startDate === res.endDate;
-                                const borderColors = { 'Bas': 'bg-blue-500', 'Annabel': 'bg-purple-500', 'Gast': 'bg-gray-800' };
-                                const textColors = { 'Bas': 'text-blue-500', 'Annabel': 'text-purple-500', 'Gast': 'text-gray-800' };
-                                return (
-                                    <div key={res.id} className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-2 ${borderColors[res.driver] || 'bg-gray-400'}`}></div>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
-                                                <span className="text-[9px] font-black text-red-600 uppercase leading-none">{formatDate(res.startDate).split(' ')[0]}</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-lg font-black text-gray-800 leading-tight">{formatDate(res.startDate).split(' ')[1]}</span>
-                                                    {!isSingleDay && <i className="bi bi-arrow-right text-[10px] opacity-30"></i>}
-                                                    {!isSingleDay && <span className="text-lg font-black text-gray-800 leading-tight">{formatDate(res.endDate).split(' ')[1]}</span>}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{res.note}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text-[9px] font-black uppercase ${textColors[res.driver] || 'text-gray-400'}`}>{res.driver}</span>
-                                                    <span className="text-gray-300 text-[10px]">•</span>
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase italic">
-                                                        {res.isAllDay ? 'Hele dag' : `${res.startTime} - ${res.endTime}`}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-  onClick={() => onDelete(res.id)}
-  className="w-12 h-12 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
-  title="Verwijder reservering"
->
-  <i className="bi bi-trash3-fill text-xl"></i>
-</button>
+  <h3 className="text-xs font-black text-gray-300 uppercase tracking-[0.3em] mb-10 text-center italic">
+    Planning
+  </h3>
 
-                                    </div>
-                                );
-                            })}
+  <div className="space-y-4">
+    {(planning?.length ?? 0) === 0 ? (
+      <p className="text-center py-20 text-gray-300 italic font-bold uppercase text-[11px] tracking-widest opacity-40">
+        De weg ligt nog open...
+      </p>
+    ) : (
+      (planning ?? [])
+        .slice()
+        .sort((a, b) => (a.date > b.date ? 1 : -1))
+        .map((p) => {
+          const borderColors = { Bas: "bg-blue-500", Annabel: "bg-purple-500", Gast: "bg-gray-800" };
+          const textColors = { Bas: "text-blue-500", Annabel: "text-purple-500", Gast: "text-gray-800" };
+
+          return (
+            <div
+              key={p.id}
+              className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
+            >
+              <div className={`absolute left-0 top-0 bottom-0 w-2 ${borderColors[p.owner] || "bg-gray-400"}`} />
+
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
+                  <span className="text-[9px] font-black text-red-600 uppercase leading-none">
+                    {new Date(p.date).toLocaleDateString("nl-NL", { weekday: "short" })}
+                  </span>
+                  <span className="text-lg font-black text-gray-800 leading-tight">
+                    {new Date(p.date).toLocaleDateString("nl-NL", { day: "numeric" })}
+                  </span>
+                </div>
+
+                <div>
+                  <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">
+                    {p.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-[9px] font-black uppercase ${textColors[p.owner] || "text-gray-400"}`}>
+                      {p.owner ?? "-"}
+                    </span>
+                    <span className="text-gray-300 text-[10px]">•</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase italic">
+                      Hele dag
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onDelete(p.id)}
+                className="w-12 h-12 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
+                title="Verwijder reservering"
+              >
+                <i className="bi bi-trash3-fill text-xl"></i>
+              </button>
+            </div>
+          );
+        })
+    )}
+  </div>
+</div>
+
                         </div>
                     </div>
                 </div>
