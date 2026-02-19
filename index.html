@@ -391,6 +391,29 @@ const { useState, useEffect, useMemo, useRef } = React;
               }
             }
 
+function getHomeTimeLabel(p) {
+  const id = String(p?.id ?? "");
+  if (!id) return "HELE DAG";
+
+  // Zoek het bijbehorende agenda-item dat aan Supabase planning-row is gekoppeld
+  const linked = (reservations ?? []).find(
+    (r) => String(r?._sbPlanningId ?? "") === id
+  );
+
+  if (!linked) return "HELE DAG";
+  if (linked.isAllDay) return "HELE DAG";
+
+  const st = String(linked.startTime ?? "").trim();
+  const et = String(linked.endTime ?? "").trim();
+  if (!st || !et) return "HELE DAG";
+
+  // Multi-day (optioneel netjes labelen)
+  const sd = String(linked.startDate ?? "").trim();
+  const ed = String(linked.endDate ?? "").trim();
+  if (sd && ed && sd !== ed) return `${st} - ${et} • MEERDERE DAGEN`;
+
+  return `${st} - ${et}`;
+}
 
 
             useEffect(() => {
@@ -858,74 +881,55 @@ useEffect(() => {
                                 {/* Laatste Tank Split */}
 {(refuels?.length ?? 0) > 0 && (
   <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
-    <h2 className="text-xl font-black italic uppercase tracking-tight mb-6">
-      Laatste Tank Split
-    </h2>
-
-    {/* 2 “cards” zoals je andere UI */}
-    <div className="grid grid-cols-2 gap-4 mb-6">
-      <div className="p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm">
-        <div className="absolute left-0 top-0 bottom-0 w-2 bg-blue-500" />
-        <div className="pl-4">
-          <div className="text-[10px] font-black text-gray-400 uppercase italic">Bas</div>
-          <div className="text-2xl font-black text-blue-600 mt-1">
-            €{Number(lastSplit?.bas_share ?? 0).toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm">
-        <div className="absolute left-0 top-0 bottom-0 w-2 bg-purple-500" />
-        <div className="pl-4">
-          <div className="text-[10px] font-black text-gray-400 uppercase italic">Annabel</div>
-          <div className="text-2xl font-black text-purple-600 mt-1">
-            €{Number(lastSplit?.annabel_share ?? 0).toFixed(2)}
-          </div>
-        </div>
-      </div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-xl font-black italic uppercase tracking-tight">
+        Laatste Tank Split
+      </h2>
     </div>
 
-    {/* Laatste tankbeurt row(s) in dezelfde stijl als planning cards */}
-    {(refuels ?? []).slice(0, 1).map((r) => (
-      <div
-        key={r.id}
-        className="flex justify-between items-center p-6 bg-[#FAF9F6] rounded-[35px] border border-gray-100 relative overflow-hidden shadow-sm group hover:border-red-100 transition-all"
-      >
-        <div className="absolute left-0 top-0 bottom-0 w-2 bg-gray-400" />
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-[#FAF9F6] p-6 rounded-[35px] border border-gray-100 text-center">
+          <p className="text-[9px] font-black text-blue-500 uppercase mb-2">Bas</p>
+          <p className="text-2xl font-black tabular-nums">
+            €{Number(refuels[0]?.basShare ?? 0).toFixed(2)}
+          </p>
+        </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center justify-center bg-white min-w-[3.8rem] h-16 rounded-2xl border border-gray-50 shadow-inner px-2">
-            <span className="text-[9px] font-black text-red-600 uppercase leading-none">
-              {new Date(r.date).toLocaleDateString("nl-NL", { weekday: "short" })}
-            </span>
-            <span className="text-lg font-black text-gray-800 leading-tight">
-              {new Date(r.date).toLocaleDateString("nl-NL", { day: "numeric" })}
-            </span>
-          </div>
+        <div className="bg-[#FAF9F6] p-6 rounded-[35px] border border-gray-100 text-center">
+          <p className="text-[9px] font-black text-purple-500 uppercase mb-2">Annabel</p>
+          <p className="text-2xl font-black tabular-nums">
+            €{Number(refuels[0]?.annabelShare ?? 0).toFixed(2)}
+          </p>
+        </div>
+      </div>
 
-          <div>
-            <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-red-600 transition-colors">
-              €{Number(r.cost ?? 0).toFixed(2)} • {Number(r.km ?? 0)} km
-            </p>
-            <div className="text-[9px] font-black text-gray-400 uppercase italic mt-1">
-              Laatste tankbeurt
-            </div>
-          </div>
+      <div className="flex items-center justify-between bg-[#FAF9F6] rounded-[35px] border border-gray-100 px-6 py-5">
+        <div className="min-w-0">
+          <p className="text-sm font-black truncate">
+            €{Number(refuels[0]?.cost ?? 0).toFixed(2)} • {Number(refuels[0]?.km ?? 0)} km
+          </p>
+          <p className="text-[10px] font-black text-gray-400 uppercase mt-1">
+            {new Date(refuels[0]?.date ?? new Date().toISOString()).toLocaleDateString("nl-NL")}
+          </p>
         </div>
 
         <button
-          onClick={() => sbDeleteRefuel(r.id)}
-          className="w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95"
+          onClick={() => handleDeleteRefuel(refuels[0])}
+          disabled={refuelsDeletingIdsRef.current.has(String(refuels[0]?.id))}
+          className="w-12 h-12 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-red-600 hover:border-red-100 transition active:scale-95 disabled:opacity-40"
           title="Verwijder tankbeurt"
         >
           <i className="bi bi-trash3-fill text-xl"></i>
         </button>
       </div>
-    ))}
+    </div>
   </div>
 )}
+
  
-                                    </div>                                  
+                                    </div> 
+                    </div>
                                 )}
 
                                 <div className="bg-white p-8 rounded-[50px] shadow-sm border border-gray-200/50">
