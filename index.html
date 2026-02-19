@@ -962,14 +962,14 @@ useEffect(() => {
   <AgendaTab
     planning={planning}
     onAdd={async (res) => {
-      // 1) Schrijf naar Supabase planning
+      // 1) Naar Supabase planning
       const saved = await sbInsertPlanning({
         title: res.note ?? res.title ?? "Afspraak",
         date: res.startDate ?? res.date,
-        owner: res.driver ?? res.owner ?? null
+        owner: res.driver ?? res.owner ?? null,
       });
 
-      // 2) Home-state direct bijwerken
+      // 2) Lokale planning state bijwerken (Agenda + Home gebruiken dit)
       setPlanning((prev) => {
         const next = [saved, ...(prev ?? [])];
         next.sort((a, b) => (a.date > b.date ? 1 : -1));
@@ -977,15 +977,15 @@ useEffect(() => {
       });
 
       showToast("Afspraak opgeslagen!");
-      setActiveTab("home");
     }}
-    onDelete={async (planningId) => {
-      await sbDeletePlanning(planningId);
-      setPlanning((prev) => (prev ?? []).filter((p) => String(p.id) !== String(planningId)));
+    onDelete={async (id) => {
+      await sbDeletePlanning(id);
+      setPlanning((prev) => (prev ?? []).filter((p) => String(p.id) !== String(id)));
       showToast("Reservering verwijderd");
     }}
   />
 )}
+
 
 
   // ✅ koppel lokale agenda-item aan Supabase planning row
